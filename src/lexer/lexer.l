@@ -35,6 +35,8 @@ void print_token(const char* type, const char* value) {
 /* Tell Flex to track line numbers automatically */
 %option noyywrap
 %option yylineno
+%option nounput
+%option noinput
 
 /* ----------------------------------------------------------------
    DEFINITIONS (named patterns for reuse below)
@@ -51,7 +53,7 @@ NEWLINE     \n
 
 %%
 
-/* ----------------------------------------------------------------
+ /* ----------------------------------------------------------------
    SECTION 1: KEYWORDS
    Must come BEFORE the identifier rule so "int" is a keyword,
    not an identifier. Flex always picks the FIRST matching rule
@@ -69,7 +71,7 @@ NEWLINE     \n
 "false"     { print_token("BOOL_LIT", "false");
               yylval.bval = 0; return T_BOOL_LIT; }
 
-/* ----------------------------------------------------------------
+ /* ----------------------------------------------------------------
    SECTION 2: IDENTIFIERS
    Matches any name starting with a letter or underscore.
    yylval.sval stores the name for the parser to use.
@@ -80,7 +82,7 @@ NEWLINE     \n
                 return T_IDENT;
             }
 
-/* ----------------------------------------------------------------
+ /* ----------------------------------------------------------------
    SECTION 3: NUMERIC LITERALS
    Float pattern must come BEFORE integer to match "3.14" fully.
    ---------------------------------------------------------------- */
@@ -96,7 +98,7 @@ NEWLINE     \n
                 return T_INT_LIT;
             }
 
-/* ----------------------------------------------------------------
+ /* ----------------------------------------------------------------
    SECTION 4: OPERATORS
    Each operator returns a unique token type.
    ---------------------------------------------------------------- */
@@ -116,7 +118,7 @@ NEWLINE     \n
 "!"         { print_token("OPERATOR", "!");  return T_NOT;    }
 "="         { print_token("ASSIGN", "=");    return T_ASSIGN; }
 
-/* ----------------------------------------------------------------
+ /* ----------------------------------------------------------------
    SECTION 5: DELIMITERS
    ---------------------------------------------------------------- */
 "{"         { print_token("LBRACE", "{");  return T_LBRACE; }
@@ -125,21 +127,21 @@ NEWLINE     \n
 ")"         { print_token("RPAREN", ")");  return T_RPAREN; }
 ";"         { print_token("SEMICOLON", ";"); return T_SEMI; }
 
-/* ----------------------------------------------------------------
+ /* ----------------------------------------------------------------
    SECTION 6: COMMENTS (silently discard — do not tokenize)
    Single-line: // ...
-   Block:       /* ... * /
+   Block:       [slash]* ... *[slash]
    ---------------------------------------------------------------- */
 "//"[^\n]*          { /* single-line comment — ignore */ }
 "/*"([^*]|\*+[^*/])*\*+"/"  { /* block comment — ignore */ }
 
-/* ----------------------------------------------------------------
+ /* ----------------------------------------------------------------
    SECTION 7: WHITESPACE (silently discard)
    ---------------------------------------------------------------- */
 {WHITESPACE}    { /* skip spaces and tabs */ }
 {NEWLINE}       { /* skip newlines — yylineno handles counting */ }
 
-/* ----------------------------------------------------------------
+ /* ----------------------------------------------------------------
    SECTION 8: INVALID TOKENS
    Anything that did not match any of the above patterns is an
    illegal character. Report it with its line number and continue.

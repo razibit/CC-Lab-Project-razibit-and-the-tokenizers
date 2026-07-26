@@ -24,6 +24,7 @@ import subprocess
 import tempfile
 import os
 import re
+import platform
 
 # Create the Flask app.
 # static_folder='gui' tells Flask to serve files from the gui/ directory.
@@ -61,18 +62,27 @@ def compile_code():
 
     source_code = data['code']
 
-    # Write the source code to a temporary file
+    # Write the source code to a temporary file in the CURRENT directory
+    # This makes it easy for WSL to find without complex path translation
     with tempfile.NamedTemporaryFile(
-        suffix='.mc', delete=False, mode='w', encoding='utf-8'
+        dir='.', suffix='.mc', delete=False, mode='w', encoding='utf-8'
     ) as f:
         f.write(source_code)
         tmp_path = f.name
 
+    filename = os.path.basename(tmp_path)
+
     try:
+        # If running on Windows, execute the Linux binary via WSL
+        if platform.system() == "Windows":
+            cmd = ['wsl', './compiler', filename]
+        else:
+            cmd = ['./compiler', filename]
+
         # Run the compiler binary
         # timeout=10 prevents infinite loops from hanging the server
         result = subprocess.run(
-            ['./compiler', tmp_path],
+            cmd,
             capture_output=True,
             text=True,
             timeout=10

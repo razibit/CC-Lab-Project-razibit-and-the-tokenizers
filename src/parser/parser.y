@@ -29,6 +29,7 @@ int  yylex(void);
 void yyerror(const char *msg);
 extern int yylineno;     /* line number from Flex */
 extern FILE *yyin;       /* input file pointer    */
+extern char *yytext;     /* current token text from Flex */
 
 /* ---------------------------------------------------------------
    FLAGS — controlled by main.c
@@ -458,8 +459,8 @@ char* gen_code(ASTNode *node) {
     if (!node) return NULL;
 
     char buf[MAX_LINE_LEN];
-    char *left_var, *right_var, *result;
-    char *t, *Lstart, *Ltrue, *Lend;
+    char *left_var, *right_var;
+    char *t, *Lstart, *Lend;
     SymbolEntry *entry;
 
     switch (node->type) {
@@ -746,6 +747,10 @@ ASTNode *ast_root = NULL;
 /* ================================================================
    BISON DECLARATIONS
    ================================================================ */
+
+%code requires {
+    typedef struct ASTNode ASTNode;
+}
 
 /* Tell Bison what types yylval can hold */
 %union {
