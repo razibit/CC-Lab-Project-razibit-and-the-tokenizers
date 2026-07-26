@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description"
+        content="Mini Programming Language Compiler — Razibit and The Tokenizers, Metropolitan University Bangladesh. Interactive web-based compiler with lexical analysis, syntax analysis, AST, symbol table, semantic analysis and TAC generation." />
+  <title>Mini Compiler | Razibit and The Tokenizers</title>
+  <link rel="stylesheet" href="style.css" />
+  <!-- Fira Code: the perfect monospace font for a terminal look -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet" />
+</head>
+
+<body>
+
+  <!-- ============================================================
+       TOP HEADER BAR
+       ============================================================ -->
+  <header id="top-header">
+    <div class="header-left">
+      <div class="logo-text">
+        <span class="logo-bracket">[</span>
+        <span class="logo-title">MINI COMPILER</span>
+        <span class="logo-bracket">]</span>
+      </div>
+      <div class="header-subtitle">Razibit and The Tokenizers &nbsp;·&nbsp; Metropolitan University, Bangladesh</div>
+    </div>
+    <div class="header-right">
+      <div class="status-badge" id="status-badge">
+        <span class="status-dot" id="status-dot"></span>
+        <span id="status-text">READY</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============================================================
+       MAIN CONTENT: two-panel layout
+       Left = code editor  |  Right = tabbed output
+       ============================================================ -->
+  <main id="main-layout">
+
+    <!-- ── LEFT PANEL: Code Editor ────────────────────────────── -->
+    <section id="editor-panel">
+
+      <div class="panel-header">
+        <span class="panel-icon">&#9654;</span>
+        <span class="panel-title">SOURCE CODE</span>
+        <span class="panel-ext">.mc</span>
+        <button id="btn-clear" title="Clear editor">CLR</button>
+        <button id="btn-sample" title="Load sample program">SAMPLE</button>
+      </div>
+
+      <!-- Line numbers + textarea side by side -->
+      <div class="editor-wrapper">
+        <div id="line-numbers" aria-hidden="true">1</div>
+        <textarea
+          id="code-editor"
+          spellcheck="false"
+          autocorrect="off"
+          autocapitalize="off"
+          aria-label="Source code editor"
+          placeholder="// Type your mini-language code here...
+// Or click SAMPLE to load an example.
+
+int x;
+x = 5;
+print x;"
+        ></textarea>
+      </div>
+
+      <!-- Compile button -->
+      <div class="editor-footer">
+        <div class="shortcut-hint">Ctrl+Enter to compile</div>
+        <button id="btn-compile">
+          <span class="btn-icon" id="compile-icon">&#9654;</span>
+          <span id="compile-label">COMPILE</span>
+        </button>
+      </div>
+
+    </section>
+
+    <!-- ── RIGHT PANEL: Tabbed Output ─────────────────────────── -->
+    <section id="output-panel">
+
+      <div class="panel-header">
+        <span class="panel-icon">&#9632;</span>
+        <span class="panel-title">COMPILER OUTPUT</span>
+      </div>
+
+      <!-- Tab navigation -->
+      <nav id="tab-nav" role="tablist">
+        <button class="tab-btn active" role="tab" data-tab="tokens"   id="tab-tokens"  >TOKENS</button>
+        <button class="tab-btn"        role="tab" data-tab="ast"      id="tab-ast"     >AST</button>
+        <button class="tab-btn"        role="tab" data-tab="symtable" id="tab-symtable">SYM TABLE</button>
+        <button class="tab-btn"        role="tab" data-tab="tac"      id="tab-tac"     >TAC</button>
+        <button class="tab-btn"        role="tab" data-tab="errors"   id="tab-errors"  >ERRORS</button>
+      </nav>
+
+      <!-- Tab content panes -->
+      <div id="tab-contents">
+
+        <div class="tab-pane active" id="pane-tokens" role="tabpanel">
+          <pre id="out-tokens" class="output-pre"><span class="placeholder-text">&#11835;  Compile your code to see token output here.</span></pre>
+        </div>
+
+        <div class="tab-pane" id="pane-ast" role="tabpanel">
+          <pre id="out-ast" class="output-pre"><span class="placeholder-text">&#11835;  Compile your code to see the Abstract Syntax Tree here.</span></pre>
+        </div>
+
+        <div class="tab-pane" id="pane-symtable" role="tabpanel">
+          <pre id="out-symtable" class="output-pre"><span class="placeholder-text">&#11835;  Compile your code to see the Symbol Table here.</span></pre>
+        </div>
+
+        <div class="tab-pane" id="pane-tac" role="tabpanel">
+          <pre id="out-tac" class="output-pre"><span class="placeholder-text">&#11835;  Compile your code to see Three Address Code here.</span></pre>
+        </div>
+
+        <div class="tab-pane" id="pane-errors" role="tabpanel">
+          <pre id="out-errors" class="output-pre"><span class="placeholder-text">&#11835;  Compile your code to see error messages here.</span></pre>
+        </div>
+
+      </div>
+
+      <!-- Summary bar at the bottom of output panel -->
+      <div id="summary-bar">
+        <span id="summary-text">Waiting for compilation...</span>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- ============================================================
+       PIPELINE DIAGRAM (below the editor/output panels)
+       Shows the 6 compiler phases for educational purposes.
+       ============================================================ -->
+  <section id="pipeline-section">
+    <h2 class="pipeline-title">COMPILER PIPELINE</h2>
+    <div id="pipeline-diagram">
+      <div class="pipe-stage" id="stage-lexer">
+        <div class="pipe-num">01</div>
+        <div class="pipe-name">LEXER</div>
+        <div class="pipe-desc">Flex<br/>Tokenizes source</div>
+      </div>
+      <div class="pipe-arrow">&#9654;</div>
+      <div class="pipe-stage" id="stage-parser">
+        <div class="pipe-num">02</div>
+        <div class="pipe-name">PARSER</div>
+        <div class="pipe-desc">Bison<br/>Validates grammar</div>
+      </div>
+      <div class="pipe-arrow">&#9654;</div>
+      <div class="pipe-stage" id="stage-ast">
+        <div class="pipe-num">03</div>
+        <div class="pipe-name">AST</div>
+        <div class="pipe-desc">C Structs<br/>Builds syntax tree</div>
+      </div>
+      <div class="pipe-arrow">&#9654;</div>
+      <div class="pipe-stage" id="stage-symtable">
+        <div class="pipe-num">04</div>
+        <div class="pipe-name">SYM TABLE</div>
+        <div class="pipe-desc">Scoped Stack<br/>Tracks variables</div>
+      </div>
+      <div class="pipe-arrow">&#9654;</div>
+      <div class="pipe-stage" id="stage-semantic">
+        <div class="pipe-num">05</div>
+        <div class="pipe-name">SEMANTIC</div>
+        <div class="pipe-desc">Type checker<br/>Validates meaning</div>
+      </div>
+      <div class="pipe-arrow">&#9654;</div>
+      <div class="pipe-stage" id="stage-tac">
+        <div class="pipe-num">06</div>
+        <div class="pipe-name">TAC GEN</div>
+        <div class="pipe-desc">Three Address<br/>Code output</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       FOOTER
+       ============================================================ -->
+  <footer id="bottom-footer">
+    <span>Compiler Construction Lab &nbsp;·&nbsp; Metropolitan University, Bangladesh &nbsp;·&nbsp; 2026</span>
+  </footer>
+
+  <!-- ============================================================
+       JAVASCRIPT
+       ============================================================ -->
+  <script>
+
+  /* ── SAMPLE PROGRAM ─────────────────────────────────────────── */
+  const SAMPLE_CODE = `/* Sample program — demonstrates all features */
+int x;
+int y;
+bool flag;
+
+x = 10;
+y = 0;
+flag = true;
+
+while (x > 0) {
+    y = y + x;
+    x = x - 1;
+}
+
+if (flag == true) {
+    print y;
+} else {
+    print x;
+}`;
+
+  /* ── DOM REFERENCES ──────────────────────────────────────────── */
+  const editor       = document.getElementById('code-editor');
+  const lineNumbers  = document.getElementById('line-numbers');
+  const btnCompile   = document.getElementById('btn-compile');
+  const btnClear     = document.getElementById('btn-clear');
+  const btnSample    = document.getElementById('btn-sample');
+  const compileIcon  = document.getElementById('compile-icon');
+  const compileLabel = document.getElementById('compile-label');
+  const statusDot    = document.getElementById('status-dot');
+  const statusText   = document.getElementById('status-text');
+  const summaryText  = document.getElementById('summary-text');
+
+  const outputs = {
+    tokens:   document.getElementById('out-tokens'),
+    ast:      document.getElementById('out-ast'),
+    symtable: document.getElementById('out-symtable'),
+    tac:      document.getElementById('out-tac'),
+    errors:   document.getElementById('out-errors'),
+  };
+
+  /* ── LINE NUMBERS ────────────────────────────────────────────── */
+  function updateLineNumbers() {
+    const lineCount = editor.value.split('\n').length;
+    let nums = '';
+    for (let i = 1; i <= lineCount; i++) nums += i + '\n';
+    lineNumbers.textContent = nums;
+  }
+
+  editor.addEventListener('input',  updateLineNumbers);
+  editor.addEventListener('scroll', () => {
+    lineNumbers.scrollTop = editor.scrollTop;
+  });
+
+  /* Tab key inserts 4 spaces instead of changing focus */
+  editor.addEventListener('keydown', (e) => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const start = editor.selectionStart;
+      const end   = editor.selectionEnd;
+      editor.value = editor.value.substring(0, start) + '    ' + editor.value.substring(end);
+      editor.selectionStart = editor.selectionEnd = start + 4;
+      updateLineNumbers();
+    }
+    /* Ctrl+Enter = compile */
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      compileCode();
+    }
+  });
+
+  /* ── BUTTON HANDLERS ─────────────────────────────────────────── */
+  btnClear.addEventListener('click', () => {
+    editor.value = '';
+    updateLineNumbers();
+    clearOutput();
+  });
+
+  btnSample.addEventListener('click', () => {
+    editor.value = SAMPLE_CODE;
+    updateLineNumbers();
+  });
+
+  btnCompile.addEventListener('click', compileCode);
+
+  /* ── TAB SWITCHING ───────────────────────────────────────────── */
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = btn.dataset.tab;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('pane-' + target).classList.add('active');
+    });
+  });
+
+  /* ── PIPELINE STAGE ANIMATION ────────────────────────────────── */
+  const stages = ['lexer','parser','ast','symtable','semantic','tac'];
+
+  async function animatePipeline() {
+    /* Reset all stages */
+    stages.forEach(s => {
+      const el = document.getElementById('stage-' + s);
+      el.classList.remove('active', 'done', 'error');
+    });
+    /* Light up stages one by one with a small delay */
+    for (let i = 0; i < stages.length; i++) {
+      await sleep(250);
+      document.getElementById('stage-' + stages[i]).classList.add('active');
+    }
+  }
+
+  async function completePipeline(success) {
+    stages.forEach(s => {
+      const el = document.getElementById('stage-' + s);
+      el.classList.remove('active');
+      el.classList.add(success ? 'done' : 'error');
+    });
+  }
+
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  /* ── SET STATUS ──────────────────────────────────────────────── */
+  function setStatus(state, text) {
+    statusDot.className = 'status-dot ' + state;
+    statusText.textContent = text;
+  }
+
+  /* ── CLEAR OUTPUT ────────────────────────────────────────────── */
+  function clearOutput() {
+    const placeholder = '<span class="placeholder-text">&#11835;  Compile your code to see output here.</span>';
+    Object.values(outputs).forEach(el => el.innerHTML = placeholder);
+    summaryText.textContent = 'Waiting for compilation...';
+    summaryText.className = '';
+  }
+
+  /* ── ESCAPE HTML ─────────────────────────────────────────────── */
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
+  /* ── COLORIZE OUTPUT ─────────────────────────────────────────── */
+  /* Adds color highlights to different parts of compiler output */
+  function colorize(text, type) {
+    let result = escapeHtml(text);
+
+    if (type === 'tokens') {
+      /* Highlight keywords in output */
+      result = result
+        .replace(/\b(KEYWORD)\b/g,     '<span class="tok-keyword">$1</span>')
+        .replace(/\b(IDENTIFIER)\b/g,  '<span class="tok-ident">$1</span>')
+        .replace(/\b(INT_LIT|FLOAT_LIT|BOOL_LIT)\b/g, '<span class="tok-literal">$1</span>')
+        .replace(/\b(OPERATOR|ASSIGN)\b/g, '<span class="tok-op">$1</span>')
+        .replace(/\[Line\s+\d+\]/g,    m => '<span class="tok-line">' + m + '</span>');
+    }
+
+    if (type === 'ast') {
+      result = result
+        .replace(/\b(Program|StatementList|Block)\b/g, '<span class="ast-root">$1</span>')
+        .replace(/\b(Declare|Assign|If|IfElse|While|Print)\b\w*/g, '<span class="ast-stmt">$&</span>')
+        .replace(/\b(BinaryOp|UnaryOp)\b/g, '<span class="ast-op">$1</span>')
+        .replace(/\b(Identifier|IntLiteral|FloatLiteral|BoolLiteral)\b/g, '<span class="ast-leaf">$1</span>')
+        .replace(/\[([^\]]+)\]/g, '<span class="ast-value">[$1]</span>')
+        .replace(/at line (\d+)/g, '<span class="ast-line">at line $1</span>');
+    }
+
+    if (type === 'symtable') {
+      result = result
+        .replace(/\bScope \d+\b/g,       m => '<span class="sym-scope">' + m + '</span>')
+        .replace(/\b(int|float|bool)\b/g, '<span class="sym-type">$1</span>')
+        .replace(/declared at line \d+/g, m => '<span class="sym-line">' + m + '</span>');
+    }
+
+    if (type === 'tac') {
+      result = result.split('\n').map(line => {
+        const trimmed = line.trim();
+        if (trimmed.startsWith(';')) return '<span class="tac-comment">' + line + '</span>';
+        if (/^L\d+:/.test(trimmed))  return '<span class="tac-label">' + line + '</span>';
+        if (/if_false/.test(trimmed)) return '<span class="tac-jump">' + line + '</span>';
+        if (/^  goto/.test(line))     return '<span class="tac-jump">' + line + '</span>';
+        if (/print/.test(trimmed))    return '<span class="tac-print">' + line + '</span>';
+        return '<span class="tac-instr">' + line + '</span>';
+      }).join('\n');
+    }
+
+    if (type === 'errors') {
+      result = result.split('\n').map(line => {
+        if (/Semantic Error/i.test(line)) return '<span class="err-semantic">' + escapeHtml(line) + '</span>';
+        if (/Syntax Error/i.test(line))   return '<span class="err-syntax">' + escapeHtml(line) + '</span>';
+        if (/Lexical Error/i.test(line))  return '<span class="err-lexical">' + escapeHtml(line) + '</span>';
+        return line;
+      }).join('\n');
+      /* Note: errors are already escaped in the split/map above */
+      return result;
+    }
+
+    return result;
+  }
+
+  /* ── MAIN COMPILE FUNCTION ───────────────────────────────────── */
+  async function compileCode() {
+    const code = editor.value.trim();
+    if (!code) {
+      setStatus('warning', 'NO CODE');
+      summaryText.textContent = 'Please enter some code first.';
+      return;
+    }
+
+    /* Set loading state */
+    setStatus('loading', 'COMPILING');
+    compileIcon.textContent  = '⟳';
+    compileLabel.textContent = 'RUNNING...';
+    btnCompile.disabled = true;
+    summaryText.textContent = 'Compiling...';
+    summaryText.className = '';
+
+    /* Animate the pipeline diagram */
+    animatePipeline();
+
+    try {
+      const response = await fetch('/compile', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ code })
+      });
+
+      const data = await response.json();
+
+      if (data.error) {
+        /* Server-side error (binary not found, timeout, etc.) */
+        setStatus('error', 'ERROR');
+        outputs.errors.innerHTML = '<span class="err-server">' + escapeHtml(data.error) + '</span>';
+        summaryText.textContent  = 'Server error: ' + data.error;
+        summaryText.className    = 'status-fail';
+        completePipeline(false);
+        /* Switch to errors tab */
+        document.querySelector('[data-tab="errors"]').click();
+        return;
+      }
+
+      /* Fill in each output tab */
+      outputs.tokens.innerHTML   = data.tokens   ? colorize(data.tokens,   'tokens')   : '<span class="placeholder-text">(no tokens)</span>';
+      outputs.ast.innerHTML      = data.ast       ? colorize(data.ast,      'ast')      : '<span class="placeholder-text">(no AST)</span>';
+      outputs.symtable.innerHTML = data.symbol_table ? colorize(data.symbol_table, 'symtable') : '<span class="placeholder-text">(empty)</span>';
+      outputs.tac.innerHTML      = data.tac       ? colorize(data.tac,      'tac')      : '<span class="placeholder-text">(no TAC)</span>';
+
+      /* Errors tab */
+      const errText = data.errors ? data.errors.trim() : '';
+      if (errText) {
+        outputs.errors.innerHTML = colorize(errText, 'errors');
+      } else {
+        outputs.errors.innerHTML = '<span class="success-text">&#10003; No errors found.</span>';
+      }
+
+      /* Update status and summary */
+      if (data.success) {
+        setStatus('success', 'SUCCESS');
+        summaryText.textContent = '✓ Compilation successful — Three Address Code generated.';
+        summaryText.className   = 'status-ok';
+        completePipeline(true);
+        /* Auto-switch to TAC tab on success */
+        document.querySelector('[data-tab="tac"]').click();
+      } else {
+        setStatus('error', 'ERRORS FOUND');
+        summaryText.textContent = '✗ Compilation failed — see Errors tab for details.';
+        summaryText.className   = 'status-fail';
+        completePipeline(false);
+        /* Auto-switch to errors tab on failure */
+        document.querySelector('[data-tab="errors"]').click();
+      }
+
+    } catch (err) {
+      setStatus('error', 'NETWORK ERROR');
+      outputs.errors.innerHTML = '<span class="err-server">Network error: Could not reach the server.\nMake sure server.py is running:\n  python server.py</span>';
+      summaryText.textContent  = 'Could not connect to compiler server.';
+      summaryText.className    = 'status-fail';
+      completePipeline(false);
+    } finally {
+      compileIcon.textContent  = '▶';
+      compileLabel.textContent = 'COMPILE';
+      btnCompile.disabled = false;
+    }
+  }
+
+  /* ── INIT ────────────────────────────────────────────────────── */
+  /* Load the sample program on first load */
+  editor.value = SAMPLE_CODE;
+  updateLineNumbers();
+  setStatus('', 'READY');
+
+  </script>
+
+</body>
+</html>
