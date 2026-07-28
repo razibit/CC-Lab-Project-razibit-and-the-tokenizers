@@ -12,7 +12,8 @@ Compiler Construction Lab — 2026
 
 | Member | GitHub |
 |--------|--------|
-| (Add your names here) | (Add your GitHub usernames here) |
+| Rajib Dab (231-115-103) | [razibit](https://github.com/razibit) |
+| Md Monsur Alam (231-115-104) | [mdmonsuralam](https://github.com/mdmonsuralam) |
 
 ---
 
@@ -234,7 +235,7 @@ for f in tests/invalid/*.mc; do echo "--- $f ---"; ./compiler "$f"; done
 
 ---
 
-## Web GUI (Bonus Feature)
+## Web GUI (Extra Feature)
 
 The project includes a browser-based GUI with a **Matrix terminal aesthetic** (dark green on black).
 
