@@ -10,10 +10,22 @@
   <!-- Fira Code: the perfect monospace font for a terminal look -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600&display=swap" rel="stylesheet" />
 </head>
 
 <body>
+
+  <!-- ============================================================
+       TERMINAL TITLE BAR (macOS-style window chrome)
+       ============================================================ -->
+  <div class="terminal-titlebar">
+    <div class="titlebar-dots">
+      <span class="titlebar-dot dot-close"></span>
+      <span class="titlebar-dot dot-minimize"></span>
+      <span class="titlebar-dot dot-maximize"></span>
+    </div>
+    <span class="titlebar-text">mini-compiler — razibit@tokenizers:~/project</span>
+  </div>
 
   <!-- ============================================================
        TOP HEADER BAR
@@ -74,7 +86,7 @@ print x;"
       <div class="editor-footer">
         <div class="shortcut-hint">Ctrl+Enter to compile</div>
         <button id="btn-compile">
-          <span class="btn-icon" id="compile-icon">&#9654;</span>
+          <span class="btn-icon" id="compile-icon">$</span>
           <span id="compile-label">COMPILE</span>
         </button>
       </div>
@@ -143,31 +155,31 @@ print x;"
         <div class="pipe-name">LEXER</div>
         <div class="pipe-desc">Flex<br/>Tokenizes source</div>
       </div>
-      <div class="pipe-arrow">&#9654;</div>
+      <div class="pipe-arrow">─▸</div>
       <div class="pipe-stage" id="stage-parser">
         <div class="pipe-num">02</div>
         <div class="pipe-name">PARSER</div>
         <div class="pipe-desc">Bison<br/>Validates grammar</div>
       </div>
-      <div class="pipe-arrow">&#9654;</div>
+      <div class="pipe-arrow">─▸</div>
       <div class="pipe-stage" id="stage-ast">
         <div class="pipe-num">03</div>
         <div class="pipe-name">AST</div>
         <div class="pipe-desc">C Structs<br/>Builds syntax tree</div>
       </div>
-      <div class="pipe-arrow">&#9654;</div>
+      <div class="pipe-arrow">─▸</div>
       <div class="pipe-stage" id="stage-symtable">
         <div class="pipe-num">04</div>
         <div class="pipe-name">SYM TABLE</div>
         <div class="pipe-desc">Scoped Stack<br/>Tracks variables</div>
       </div>
-      <div class="pipe-arrow">&#9654;</div>
+      <div class="pipe-arrow">─▸</div>
       <div class="pipe-stage" id="stage-semantic">
         <div class="pipe-num">05</div>
         <div class="pipe-name">SEMANTIC</div>
         <div class="pipe-desc">Type checker<br/>Validates meaning</div>
       </div>
-      <div class="pipe-arrow">&#9654;</div>
+      <div class="pipe-arrow">─▸</div>
       <div class="pipe-stage" id="stage-tac">
         <div class="pipe-num">06</div>
         <div class="pipe-name">TAC GEN</div>
@@ -401,7 +413,7 @@ if (flag == true) {
 
     /* Set loading state */
     setStatus('loading', 'COMPILING');
-    compileIcon.textContent  = '⟳';
+    compileIcon.textContent  = '~';
     compileLabel.textContent = 'RUNNING...';
     btnCompile.disabled = true;
     summaryText.textContent = 'Compiling...';
@@ -469,7 +481,7 @@ if (flag == true) {
       summaryText.className    = 'status-fail';
       completePipeline(false);
     } finally {
-      compileIcon.textContent  = '▶';
+      compileIcon.textContent  = '$';
       compileLabel.textContent = 'COMPILE';
       btnCompile.disabled = false;
     }
