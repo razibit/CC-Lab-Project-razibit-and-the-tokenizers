@@ -235,7 +235,7 @@ for f in tests/invalid/*.mc; do echo "--- $f ---"; ./compiler "$f"; done
 
 ---
 
-## Web GUI (Bonus Feature)
+## Web GUI (Extra Feature)
 
 The project includes a browser-based GUI with a **Matrix terminal aesthetic** (dark green on black).
 
