@@ -32,11 +32,11 @@ extern int   semantic_error_count;  /* counts semantic errors found */
 extern void *ast_root;
 
 /* Functions defined in parser.y that we call after parsing */
+extern void enter_scope(void);
+extern char *gen_code(void *node);
 extern void print_ast(void *node, int depth);
 extern void print_symbol_table(void);
 extern void print_tac(void);
-extern void enter_scope(void);
-extern char *gen_code(void *node);
 
 int main(int argc, char *argv[]) {
 
