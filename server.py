@@ -31,6 +31,42 @@ import platform
 app = Flask(__name__, static_folder='gui', static_url_path='')
 
 
+def parse_output_sections(output: str) -> dict:
+    """
+    Split the compiler's stdout into named sections.
+
+    The compiler outputs sections like:
+        ==================== TOKENS ====================
+        ... content ...
+        ==================== AST ====================
+        ... content ...
+
+    This function splits on those headers and returns a dict.
+    """
+    sections = {}
+    current_section = None
+    current_lines = []
+
+    for line in output.splitlines():
+        # Check if this line is a section header (matches ==...== TITLE ==...==)
+        if line.startswith('==') and line.strip().endswith('=='):
+            # Save previous section
+            if current_section:
+                sections[current_section] = '\n'.join(current_lines).strip()
+            # Start new section — extract title from between the =='s
+            title = re.sub(r'=+', '', line).strip()
+            current_section = title
+            current_lines = []
+        elif current_section:
+            current_lines.append(line)
+
+    # Save last section
+    if current_section:
+        sections[current_section] = '\n'.join(current_lines).strip()
+
+    return sections
+
+
 @app.route('/')
 def index():
     """Serve the main HTML page."""
@@ -134,42 +170,6 @@ def compile_code():
     finally:
         # Always delete the temporary file
         os.unlink(tmp_path)
-
-
-def parse_output_sections(output: str) -> dict:
-    """
-    Split the compiler's stdout into named sections.
-
-    The compiler outputs sections like:
-        ==================== TOKENS ====================
-        ... content ...
-        ==================== AST ====================
-        ... content ...
-
-    This function splits on those headers and returns a dict.
-    """
-    sections = {}
-    current_section = None
-    current_lines = []
-
-    for line in output.splitlines():
-        # Check if this line is a section header (matches ==...== TITLE ==...==)
-        if line.startswith('==') and line.strip().endswith('=='):
-            # Save previous section
-            if current_section:
-                sections[current_section] = '\n'.join(current_lines).strip()
-            # Start new section — extract title from between the =='s
-            title = re.sub(r'=+', '', line).strip()
-            current_section = title
-            current_lines = []
-        elif current_section:
-            current_lines.append(line)
-
-    # Save last section
-    if current_section:
-        sections[current_section] = '\n'.join(current_lines).strip()
-
-    return sections
 
 
 if __name__ == '__main__':
