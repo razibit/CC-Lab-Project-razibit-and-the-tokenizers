@@ -363,3 +363,5 @@ Write clean, readable code.
 Keep your repository organized.
 
 Most importantly, understand everything your group submits.
+
+Note: This repository update is intentionally non-functional and does not alter the application runtime.
