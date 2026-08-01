@@ -26,36 +26,15 @@ import os
 import re
 import platform
 
-from backend_feature import AnalysisStore, FeatureAnalyzer
-
 # Create the Flask app.
 # static_folder='gui' tells Flask to serve files from the gui/ directory.
 app = Flask(__name__, static_folder='gui', static_url_path='')
-
-analysis_store = AnalysisStore(max_items=20)
-feature_analyzer = FeatureAnalyzer(store=analysis_store)
 
 
 @app.route('/')
 def index():
     """Serve the main HTML page."""
     return send_from_directory('gui', 'index.html')
-
-
-@app.route('/analyze', methods=['POST'])
-def analyze_code():
-    """Run the experimental backend analysis feature on source code."""
-    data = request.get_json()
-    if not data or 'code' not in data:
-        return jsonify({'error': 'No code provided'}), 400
-
-    source_code = data['code']
-    result = feature_analyzer.analyze(source_code)
-    return jsonify({
-        'analysis': result,
-        'history': analysis_store.history(),
-        'feature_enabled': True
-    })
 
 
 @app.route('/compile', methods=['POST'])
