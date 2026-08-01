@@ -395,21 +395,34 @@ int   label_count = 0; /* counter for labels: L0, L1, ...         */
 /* Add one line of TAC */
 void emit(const char *line) {
     if (tac_count < MAX_TAC_LINES) {
-        strncpy(tac_code[tac_count++], line, MAX_LINE_LEN - 1);
+        snprintf(tac_code[tac_count], MAX_LINE_LEN, "%s", line);
+        tac_count++;
     }
 }
 
 /* Generate a new unique temp variable name: t1, t2, ... */
+void new_temp_name(char *buf, size_t size) {
+    if (size > 0) {
+        snprintf(buf, size, "t%d", ++temp_count);
+    }
+}
+
 char* new_temp() {
     static char buf[16];
-    snprintf(buf, sizeof(buf), "t%d", ++temp_count);
+    new_temp_name(buf, sizeof(buf));
     return buf;
 }
 
 /* Generate a new unique label name: L0, L1, ... */
+void new_label_name(char *buf, size_t size) {
+    if (size > 0) {
+        snprintf(buf, size, "L%d", label_count++);
+    }
+}
+
 char* new_label() {
     static char buf[16];
-    snprintf(buf, sizeof(buf), "L%d", label_count++);
+    new_label_name(buf, sizeof(buf));
     return buf;
 }
 
@@ -497,9 +510,9 @@ char* gen_code(ASTNode *node) {
     case NODE_PROGRAM:
     case NODE_STMT_LIST:
     case NODE_BLOCK:
-        gen_code(node->child[0]);
-        gen_code(node->child[1]);
-        gen_code(node->child[2]);
+        for (int i = 0; i < 3; i++) {
+            gen_code(node->child[i]);
+        }
         return NULL;
 
     /* ----------------------------------------------------------
@@ -560,19 +573,19 @@ char* gen_code(ASTNode *node) {
          Lend:
        ---------------------------------------------------------- */
     case NODE_IF: {
+        char Lend_buf[16];
         left_var = gen_code(node->child[0]);  /* condition */
-        Lend = strdup(new_label());
+        new_label_name(Lend_buf, sizeof(Lend_buf));
 
-        snprintf(buf, sizeof(buf), "  if_false %s goto %s", left_var, Lend);
+        snprintf(buf, sizeof(buf), "  if_false %s goto %s", left_var, Lend_buf);
         emit(buf);
 
         enter_scope();
         gen_code(node->child[1]);  /* then-body */
         exit_scope();
 
-        snprintf(buf, sizeof(buf), "%s:", Lend);
+        snprintf(buf, sizeof(buf), "%s:", Lend_buf);
         emit(buf);
-        free(Lend);
         return NULL;
     }
 
@@ -588,30 +601,30 @@ char* gen_code(ASTNode *node) {
          Lend:
        ---------------------------------------------------------- */
     case NODE_IF_ELSE: {
+        char Lelse_buf[16];
+        char Lend_buf[16];
         left_var = gen_code(node->child[0]);  /* condition */
-        char *Lelse = strdup(new_label());
-        Lend        = strdup(new_label());
+        new_label_name(Lelse_buf, sizeof(Lelse_buf));
+        new_label_name(Lend_buf, sizeof(Lend_buf));
 
-        snprintf(buf, sizeof(buf), "  if_false %s goto %s", left_var, Lelse);
+        snprintf(buf, sizeof(buf), "  if_false %s goto %s", left_var, Lelse_buf);
         emit(buf);
 
         enter_scope();
         gen_code(node->child[1]);  /* then-body */
         exit_scope();
 
-        snprintf(buf, sizeof(buf), "  goto %s", Lend);
+        snprintf(buf, sizeof(buf), "  goto %s", Lend_buf);
         emit(buf);
-        snprintf(buf, sizeof(buf), "%s:", Lelse);
+        snprintf(buf, sizeof(buf), "%s:", Lelse_buf);
         emit(buf);
 
         enter_scope();
         gen_code(node->child[2]);  /* else-body */
         exit_scope();
 
-        snprintf(buf, sizeof(buf), "%s:", Lend);
+        snprintf(buf, sizeof(buf), "%s:", Lend_buf);
         emit(buf);
-        free(Lelse);
-        free(Lend);
         return NULL;
     }
 
@@ -626,27 +639,27 @@ char* gen_code(ASTNode *node) {
          Lend:
        ---------------------------------------------------------- */
     case NODE_WHILE: {
-        Lstart = strdup(new_label());
-        Lend   = strdup(new_label());
+        char Lstart_buf[16];
+        char Lend_buf[16];
+        new_label_name(Lstart_buf, sizeof(Lstart_buf));
+        new_label_name(Lend_buf, sizeof(Lend_buf));
 
-        snprintf(buf, sizeof(buf), "%s:", Lstart);
+        snprintf(buf, sizeof(buf), "%s:", Lstart_buf);
         emit(buf);
 
         left_var = gen_code(node->child[0]);  /* condition */
 
-        snprintf(buf, sizeof(buf), "  if_false %s goto %s", left_var, Lend);
+        snprintf(buf, sizeof(buf), "  if_false %s goto %s", left_var, Lend_buf);
         emit(buf);
 
         enter_scope();
         gen_code(node->child[1]);  /* loop body */
         exit_scope();
 
-        snprintf(buf, sizeof(buf), "  goto %s", Lstart);
+        snprintf(buf, sizeof(buf), "  goto %s", Lstart_buf);
         emit(buf);
-        snprintf(buf, sizeof(buf), "%s:", Lend);
+        snprintf(buf, sizeof(buf), "%s:", Lend_buf);
         emit(buf);
-        free(Lstart);
-        free(Lend);
         return NULL;
     }
 

@@ -22,7 +22,6 @@ HOW IT WORKS (explain to teacher):
 from flask import Flask, request, jsonify, send_from_directory
 import os
 import platform
-import re
 import subprocess
 import tempfile
 
@@ -39,11 +38,7 @@ def index():
 
 def _load_source_code():
     """Extract and validate the source code from the request payload."""
-    # The browser sends JSON; this guard keeps malformed requests from crashing the server.
-    try:
-        data = request.get_json()
-    except Exception:
-        return None, (jsonify({'error': 'Invalid JSON payload'}), 400)
+    data = request.get_json(silent=True)
 
     if not isinstance(data, dict) or 'code' not in data or not isinstance(data['code'], str):
         return None, (jsonify({'error': 'No code provided'}), 400)
@@ -61,14 +56,18 @@ def _build_compile_command(filename: str):
 
 def _collect_error_lines(stdout: str, stderr: str):
     """Collect human-readable error lines from compiler output."""
-    # The compiler may report errors in stderr or embed them in stdout, so both sources are considered.
     error_lines = []
-    if stderr.strip():
-        error_lines.extend(stderr.strip().splitlines())
+    seen = set()
 
-    for line in stdout.splitlines():
-        if 'Error' in line or 'error' in line and line not in error_lines:
-            error_lines.append(line)
+    for source in (stderr, stdout):
+        for line in source.splitlines():
+            stripped = line.strip()
+            if not stripped:
+                continue
+            lowered = stripped.lower()
+            if 'error' in lowered and stripped not in seen:
+                error_lines.append(stripped)
+                seen.add(stripped)
 
     return error_lines
 
@@ -172,13 +171,14 @@ def parse_output_sections(output: str) -> dict:
     current_lines = []
 
     for line in output.splitlines():
+        stripped = line.strip()
         # Check if this line is a section header (matches ==...== TITLE ==...==)
-        if line.startswith('==') and line.strip().endswith('=='):
+        if stripped.startswith('==') and stripped.endswith('=='):
             # Save previous section
             if current_section:
                 sections[current_section] = '\n'.join(current_lines).strip()
-            # Start new section — extract title from between the =='s
-            title = re.sub(r'=+', '', line).strip()
+            # Start new section — extract the title from between the =='s
+            title = stripped.strip('=').strip()
             current_section = title
             current_lines = []
         elif current_section:
