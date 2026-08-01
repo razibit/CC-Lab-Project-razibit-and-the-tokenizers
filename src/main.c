@@ -118,3 +118,5 @@ int main(int argc, char *argv[]) {
     /* Return 0 = success, 1 = errors */
     return (parse_ok != 0 || semantic_error_count > 0) ? 1 : 0;
 }
+
+/* Non-functional note: this comment does not alter program behavior. */
