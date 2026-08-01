@@ -15,6 +15,9 @@
 #   make run      → build and run on the sample program
 # =============================================================
 
+# =============================================================
+#  COMPILER SETTINGS & DIRECTIVES
+# =============================================================
 # Compiler and flags
 CC      = gcc
 CFLAGS  = -Wall -g
@@ -22,6 +25,9 @@ CFLAGS  = -Wall -g
 # Output executable name
 TARGET  = compiler
 
+# =============================================================
+#  PROJECT STRUCTURE CONFIGURATION
+# =============================================================
 # Source directories
 LEXER_DIR  = src/lexer
 PARSER_DIR = src/parser

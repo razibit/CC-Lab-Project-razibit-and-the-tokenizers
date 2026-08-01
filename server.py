@@ -26,6 +26,9 @@ import os
 import re
 import platform
 
+# =====================================================================
+# FLASK APPLICATION INITIALIZATION
+# =====================================================================
 # Create the Flask app.
 # static_folder='gui' tells Flask to serve files from the gui/ directory.
 app = Flask(__name__, static_folder='gui', static_url_path='')
@@ -73,6 +76,9 @@ def index():
     return send_from_directory('gui', 'index.html')
 
 
+# =====================================================================
+# COMPILATION ENDPOINT
+# =====================================================================
 @app.route('/compile', methods=['POST'])
 def compile_code():
     """
