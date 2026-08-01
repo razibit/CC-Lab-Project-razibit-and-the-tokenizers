@@ -120,3 +120,5 @@ int main(int argc, char *argv[]) {
 }
 
 /* Non-functional note: this comment does not alter program behavior. */
+
+/* Final non-functional note: this comment does not affect the compiler behavior. */
