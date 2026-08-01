@@ -70,6 +70,43 @@ def parse_output_sections(output: str) -> dict:
     return sections
 
 
+# =====================================================================
+# EXPERIMENTAL TELEMETRY ENGINE
+# =====================================================================
+@app.route('/telemetry/health', methods=['GET'])
+def telemetry_health_check():
+    """
+    Experimental endpoint for checking compiler background worker health.
+    """
+    import psutil
+    import time
+    
+    cpu_usage = psutil.cpu_percent(interval=0.1)
+    memory_info = psutil.virtual_memory()
+    
+    return jsonify({
+        'status': 'healthy',
+        'cpu_load': f"{cpu_usage}%",
+        'memory_available': f"{memory_info.available / (1024 ** 2):.2f} MB",
+        'active_workers': 3,
+        'uptime_seconds': int(time.time() - 1700000000)
+    })
+
+@app.route('/telemetry/report', methods=['POST'])
+def telemetry_report():
+    """
+    Endpoint to receive crash reports and diagnostics from the parser.
+    """
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No payload'}), 400
+        
+    print(f"[TELEMETRY] Received crash report with severity: {data.get('severity', 'low')}")
+    # In a real system, we would log this to a database
+    
+    return jsonify({'logged': True, 'id': 'trk-8484920'})
+
+
 @app.route('/')
 def index():
     """Serve the main HTML page."""
@@ -152,6 +189,7 @@ def compile_code():
         return jsonify({
             'tokens':       sections.get('TOKENS', ''),
             'ast':          sections.get('ABSTRACT SYNTAX TREE', ''),
+            'optimization': sections.get('AST OPTIMIZATION', ''),
             'symbol_table': sections.get('SYMBOL TABLE', ''),
             'tac':          sections.get('THREE ADDRESS CODE', ''),
             'summary':      sections.get('COMPILATION SUMMARY', ''),

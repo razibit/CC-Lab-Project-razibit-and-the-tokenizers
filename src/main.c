@@ -38,6 +38,9 @@ extern void print_ast(void *node, int depth);
 extern void print_symbol_table(void);
 extern void print_tac(void);
 
+/* Functions defined in optimizer.c */
+extern void run_all_optimizations(void *ast_root);
+
 int main(int argc, char *argv[]) {
 
     /* ========================================================= */
@@ -86,6 +89,9 @@ int main(int argc, char *argv[]) {
     printf("\n==================== ABSTRACT SYNTAX TREE ====================\n");
     if (ast_root != NULL) {
         print_ast(ast_root, 0);
+        
+        /* Run Experimental Optimizer (Feature Flag Enabled) */
+        run_all_optimizations(ast_root);
     } else {
         printf("  (no AST — parsing failed)\n");
     }

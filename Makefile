@@ -39,7 +39,7 @@ PARSER_C   = $(PARSER_DIR)/parser.tab.c
 PARSER_H   = $(PARSER_DIR)/parser.tab.h
 
 # Source files to compile
-SOURCES    = $(LEX_C) $(PARSER_C) $(SRC_DIR)/main.c
+SOURCES    = $(LEX_C) $(PARSER_C) $(SRC_DIR)/main.c $(SRC_DIR)/optimizer.c
 
 # Default target: build the compiler
 all: $(TARGET)
