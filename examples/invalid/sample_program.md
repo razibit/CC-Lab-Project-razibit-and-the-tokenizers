@@ -15,3 +15,5 @@ if (x > 0 {
 
 int x;
 ```
+
+Note: This example note is informational only and does not affect the compiler behavior.
