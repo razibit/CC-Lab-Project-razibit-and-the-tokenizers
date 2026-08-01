@@ -102,12 +102,14 @@ ASTNode* make_node(NodeType type, int line) {
 }
 
 ASTNode* make_ident_node(const char *name, int line) {
+    /* Identifiers are stored as AST leaves and later resolved by the semantic pass. */
     ASTNode *n = make_node(NODE_IDENT, line);
     n->name = strdup(name);
     return n;
 }
 
 ASTNode* make_binop_node(int line, const char *op, ASTNode *left, ASTNode *right) {
+    /* Shared constructor for binary expressions keeps the grammar actions concise. */
     ASTNode *n = make_node(NODE_BINOP, line);
     strncpy(n->op, op, sizeof(n->op) - 1);
     n->op[sizeof(n->op) - 1] = '\0';
@@ -117,6 +119,7 @@ ASTNode* make_binop_node(int line, const char *op, ASTNode *left, ASTNode *right
 }
 
 ASTNode* make_unop_node(int line, const char *op, ASTNode *child) {
+    /* Unary expressions follow the same AST shape as binary ones, with a single child. */
     ASTNode *n = make_node(NODE_UNOP, line);
     strncpy(n->op, op, sizeof(n->op) - 1);
     n->op[sizeof(n->op) - 1] = '\0';

@@ -39,6 +39,7 @@ def index():
 
 def _load_source_code():
     """Extract and validate the source code from the request payload."""
+    # The browser sends JSON; this guard keeps malformed requests from crashing the server.
     try:
         data = request.get_json()
     except Exception:
@@ -52,6 +53,7 @@ def _load_source_code():
 
 def _build_compile_command(filename: str):
     """Build the subprocess command for the current platform."""
+    # Windows uses the Linux compiler through WSL, while Unix-like systems can run it directly.
     if platform.system() == 'Windows':
         return ['wsl', './compiler', filename]
     return ['./compiler', filename]
@@ -59,6 +61,7 @@ def _build_compile_command(filename: str):
 
 def _collect_error_lines(stdout: str, stderr: str):
     """Collect human-readable error lines from compiler output."""
+    # The compiler may report errors in stderr or embed them in stdout, so both sources are considered.
     error_lines = []
     if stderr.strip():
         error_lines.extend(stderr.strip().splitlines())
