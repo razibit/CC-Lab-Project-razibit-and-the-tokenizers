@@ -20,11 +20,11 @@ HOW IT WORKS (explain to teacher):
 """
 
 from flask import Flask, request, jsonify, send_from_directory
+import os
+import platform
+import re
 import subprocess
 import tempfile
-import os
-import re
-import platform
 
 # Create the Flask app.
 # static_folder='gui' tells Flask to serve files from the gui/ directory.
@@ -35,6 +35,45 @@ app = Flask(__name__, static_folder='gui', static_url_path='')
 def index():
     """Serve the main HTML page."""
     return send_from_directory('gui', 'index.html')
+
+
+def _load_source_code():
+    """Extract and validate the source code from the request payload."""
+    try:
+        data = request.get_json()
+    except Exception:
+        return None, (jsonify({'error': 'Invalid JSON payload'}), 400)
+
+    if not isinstance(data, dict) or 'code' not in data or not isinstance(data['code'], str):
+        return None, (jsonify({'error': 'No code provided'}), 400)
+
+    return data['code'], None
+
+
+def _build_compile_command(filename: str):
+    """Build the subprocess command for the current platform."""
+    if platform.system() == 'Windows':
+        return ['wsl', './compiler', filename]
+    return ['./compiler', filename]
+
+
+def _collect_error_lines(stdout: str, stderr: str):
+    """Collect human-readable error lines from compiler output."""
+    error_lines = []
+    if stderr.strip():
+        error_lines.extend(stderr.strip().splitlines())
+
+    for line in stdout.splitlines():
+        if 'Error' in line or 'error' in line and line not in error_lines:
+            error_lines.append(line)
+
+    return error_lines
+
+
+def _cleanup_temp_file(tmp_path):
+    """Delete the temporary source file if it still exists."""
+    if tmp_path and os.path.exists(tmp_path):
+        os.unlink(tmp_path)
 
 
 @app.route('/compile', methods=['POST'])
@@ -56,31 +95,21 @@ def compile_code():
             "success":      true / false
         }
     """
-    data = request.get_json()
-    if not data or 'code' not in data:
-        return jsonify({'error': 'No code provided'}), 400
+    source_code, error_response = _load_source_code()
+    if error_response is not None:
+        return error_response
 
-    source_code = data['code']
-
-    # Write the source code to a temporary file in the CURRENT directory
-    # This makes it easy for WSL to find without complex path translation
-    with tempfile.NamedTemporaryFile(
-        dir='.', suffix='.mc', delete=False, mode='w', encoding='utf-8'
-    ) as f:
-        f.write(source_code)
-        tmp_path = f.name
-
-    filename = os.path.basename(tmp_path)
-
+    tmp_path = None
     try:
-        # If running on Windows, execute the Linux binary via WSL
-        if platform.system() == "Windows":
-            cmd = ['wsl', './compiler', filename]
-        else:
-            cmd = ['./compiler', filename]
+        with tempfile.NamedTemporaryFile(
+            dir='.', suffix='.mc', delete=False, mode='w', encoding='utf-8'
+        ) as handle:
+            handle.write(source_code)
+            tmp_path = handle.name
 
-        # Run the compiler binary
-        # timeout=10 prevents infinite loops from hanging the server
+        filename = os.path.basename(tmp_path)
+        cmd = _build_compile_command(filename)
+
         result = subprocess.run(
             cmd,
             capture_output=True,
@@ -91,20 +120,8 @@ def compile_code():
         stdout = result.stdout
         stderr = result.stderr
         full_output = stdout + ('\n' + stderr if stderr.strip() else '')
-
-        # Parse the output into sections
-        # Each section is between "=== HEADER ===" markers
         sections = parse_output_sections(full_output)
-
-        # Collect error lines (from stderr + any "Error" lines in stdout)
-        error_lines = []
-        if stderr.strip():
-            error_lines.extend(stderr.strip().splitlines())
-        for line in stdout.splitlines():
-            if 'Error' in line or 'error' in line:
-                if line not in error_lines:
-                    error_lines.append(line)
-
+        error_lines = _collect_error_lines(stdout, stderr)
         success = result.returncode == 0
 
         return jsonify({
@@ -132,8 +149,7 @@ def compile_code():
             'success': False
         })
     finally:
-        # Always delete the temporary file
-        os.unlink(tmp_path)
+        _cleanup_temp_file(tmp_path)
 
 
 def parse_output_sections(output: str) -> dict:

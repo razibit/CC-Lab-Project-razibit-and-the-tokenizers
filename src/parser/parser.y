@@ -101,6 +101,29 @@ ASTNode* make_node(NodeType type, int line) {
     return n;
 }
 
+ASTNode* make_ident_node(const char *name, int line) {
+    ASTNode *n = make_node(NODE_IDENT, line);
+    n->name = strdup(name);
+    return n;
+}
+
+ASTNode* make_binop_node(int line, const char *op, ASTNode *left, ASTNode *right) {
+    ASTNode *n = make_node(NODE_BINOP, line);
+    strncpy(n->op, op, sizeof(n->op) - 1);
+    n->op[sizeof(n->op) - 1] = '\0';
+    n->child[0] = left;
+    n->child[1] = right;
+    return n;
+}
+
+ASTNode* make_unop_node(int line, const char *op, ASTNode *child) {
+    ASTNode *n = make_node(NODE_UNOP, line);
+    strncpy(n->op, op, sizeof(n->op) - 1);
+    n->op[sizeof(n->op) - 1] = '\0';
+    n->child[0] = child;
+    return n;
+}
+
 /* Convert DataType enum to a readable string */
 const char* type_name(DataType t) {
     switch (t) {
@@ -856,8 +879,7 @@ decl
         {
             ASTNode *n = make_node(NODE_DECL, yylineno);
             n->name = $1->name;          /* type name: "int","float","bool" */
-            n->child[0] = make_node(NODE_IDENT, yylineno);
-            n->child[0]->name = $2;      /* variable name */
+            n->child[0] = make_ident_node($2, yylineno);
             $$ = n;
         }
     ;
@@ -866,21 +888,15 @@ decl
 type_spec
     : T_INT
         {
-            ASTNode *n = make_node(NODE_IDENT, yylineno);
-            n->name = strdup("int");
-            $$ = n;
+            $$ = make_ident_node("int", yylineno);
         }
     | T_FLOAT
         {
-            ASTNode *n = make_node(NODE_IDENT, yylineno);
-            n->name = strdup("float");
-            $$ = n;
+            $$ = make_ident_node("float", yylineno);
         }
     | T_BOOL
         {
-            ASTNode *n = make_node(NODE_IDENT, yylineno);
-            n->name = strdup("bool");
-            $$ = n;
+            $$ = make_ident_node("bool", yylineno);
         }
     ;
 
@@ -947,28 +963,26 @@ block
 
 /* Expressions (recursive) — operator precedence handled by %left/%right above */
 expr
-    : expr T_PLUS   expr { ASTNode *n=make_node(NODE_BINOP,yylineno); strcpy(n->op,"+");  n->child[0]=$1; n->child[1]=$3; $$=n; }
-    | expr T_MINUS  expr { ASTNode *n=make_node(NODE_BINOP,yylineno); strcpy(n->op,"-");  n->child[0]=$1; n->child[1]=$3; $$=n; }
-    | expr T_STAR   expr { ASTNode *n=make_node(NODE_BINOP,yylineno); strcpy(n->op,"*");  n->child[0]=$1; n->child[1]=$3; $$=n; }
-    | expr T_SLASH  expr { ASTNode *n=make_node(NODE_BINOP,yylineno); strcpy(n->op,"/");  n->child[0]=$1; n->child[1]=$3; $$=n; }
-    | expr T_PERCENT expr{ ASTNode *n=make_node(NODE_BINOP,yylineno); strcpy(n->op,"%");  n->child[0]=$1; n->child[1]=$3; $$=n; }
-    | expr T_LT     expr { ASTNode *n=make_node(NODE_BINOP,yylineno); strcpy(n->op,"<");  n->child[0]=$1; n->child[1]=$3; $$=n; }
-    | expr T_GT     expr { ASTNode *n=make_node(NODE_BINOP,yylineno); strcpy(n->op,">");  n->child[0]=$1; n->child[1]=$3; $$=n; }
-    | expr T_LE     expr { ASTNode *n=make_node(NODE_BINOP,yylineno); strcpy(n->op,"<="); n->child[0]=$1; n->child[1]=$3; $$=n; }
-    | expr T_GE     expr { ASTNode *n=make_node(NODE_BINOP,yylineno); strcpy(n->op,">="); n->child[0]=$1; n->child[1]=$3; $$=n; }
-    | expr T_EQ     expr { ASTNode *n=make_node(NODE_BINOP,yylineno); strcpy(n->op,"=="); n->child[0]=$1; n->child[1]=$3; $$=n; }
-    | expr T_NEQ    expr { ASTNode *n=make_node(NODE_BINOP,yylineno); strcpy(n->op,"!="); n->child[0]=$1; n->child[1]=$3; $$=n; }
-    | expr T_AND    expr { ASTNode *n=make_node(NODE_BINOP,yylineno); strcpy(n->op,"&&"); n->child[0]=$1; n->child[1]=$3; $$=n; }
-    | expr T_OR     expr { ASTNode *n=make_node(NODE_BINOP,yylineno); strcpy(n->op,"||"); n->child[0]=$1; n->child[1]=$3; $$=n; }
-    | T_NOT expr         { ASTNode *n=make_node(NODE_UNOP, yylineno); strcpy(n->op,"!");  n->child[0]=$2;                 $$=n; }
+    : expr T_PLUS   expr { $$ = make_binop_node(yylineno, "+", $1, $3); }
+    | expr T_MINUS  expr { $$ = make_binop_node(yylineno, "-", $1, $3); }
+    | expr T_STAR   expr { $$ = make_binop_node(yylineno, "*", $1, $3); }
+    | expr T_SLASH  expr { $$ = make_binop_node(yylineno, "/", $1, $3); }
+    | expr T_PERCENT expr{ $$ = make_binop_node(yylineno, "%", $1, $3); }
+    | expr T_LT     expr { $$ = make_binop_node(yylineno, "<", $1, $3); }
+    | expr T_GT     expr { $$ = make_binop_node(yylineno, ">", $1, $3); }
+    | expr T_LE     expr { $$ = make_binop_node(yylineno, "<=", $1, $3); }
+    | expr T_GE     expr { $$ = make_binop_node(yylineno, ">=", $1, $3); }
+    | expr T_EQ     expr { $$ = make_binop_node(yylineno, "==", $1, $3); }
+    | expr T_NEQ    expr { $$ = make_binop_node(yylineno, "!=", $1, $3); }
+    | expr T_AND    expr { $$ = make_binop_node(yylineno, "&&", $1, $3); }
+    | expr T_OR     expr { $$ = make_binop_node(yylineno, "||", $1, $3); }
+    | T_NOT expr         { $$ = make_unop_node(yylineno, "!", $2); }
     | T_MINUS expr %prec UMINUS
-                         { ASTNode *n=make_node(NODE_UNOP, yylineno); strcpy(n->op,"-");  n->child[0]=$2;                 $$=n; }
+                         { $$ = make_unop_node(yylineno, "-", $2); }
     | T_LPAREN expr T_RPAREN { $$ = $2; }
     | T_IDENT
         {
-            ASTNode *n = make_node(NODE_IDENT, yylineno);
-            n->name = $1;
-            $$ = n;
+            $$ = make_ident_node($1, yylineno);
         }
     | T_INT_LIT
         {
