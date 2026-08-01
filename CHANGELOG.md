@@ -13,3 +13,5 @@ Included:
 - FAQ
 - Sample test cases
 - Example programs
+
+Note: This update is intentionally non-functional and preserves the current project behavior.
