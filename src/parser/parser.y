@@ -1026,6 +1026,7 @@ expr
    ERROR FUNCTION — called by Bison when a syntax error occurs
    ================================================================ */
 void yyerror(const char *msg) {
-    fprintf(stderr, "Syntax Error [Line %d]: %s near '%s'\n",
+    fprintf(stderr,
+            "Syntax Error [Line %d]: %s near '%s'. Please review the surrounding code and try again.\n",
             yylineno, msg, yytext);
 }

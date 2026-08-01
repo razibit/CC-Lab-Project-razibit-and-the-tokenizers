@@ -79,7 +79,7 @@ def _collect_error_lines(stdout: str, stderr: str):
             if not stripped:
                 continue
             lowered = stripped.lower()
-            if 'error' in lowered and stripped not in seen:
+            if ('error' in lowered or 'warning' in lowered or 'failed' in lowered) and stripped not in seen:
                 error_lines.append(stripped)
                 seen.add(stripped)
 
@@ -114,6 +114,9 @@ def compile_code():
     source_code, error_response = _load_source_code()
     if error_response is not None:
         return error_response
+
+    if not source_code.strip():
+        return jsonify({'error': 'The source code is empty. Please enter a program to compile.', 'success': False}), 400
 
     tmp_path = None
     try:
@@ -169,7 +172,7 @@ def compile_code():
 
     except subprocess.TimeoutExpired:
         return jsonify({
-            'error': 'Compilation timed out (possible infinite loop in source code)',
+            'error': 'Compilation timed out. The program may be too slow or contain an infinite loop.',
             'success': False
         })
     except FileNotFoundError:
@@ -178,6 +181,16 @@ def compile_code():
                 'Compiler binary not found. '
                 'Please run "make" first to build the compiler.'
             ),
+            'success': False
+        })
+    except PermissionError:
+        return jsonify({
+            'error': 'The compiler binary could not be executed because it is not permitted to run.',
+            'success': False
+        })
+    except OSError as exc:
+        return jsonify({
+            'error': f'Unable to run the compiler: {exc}',
             'success': False
         })
     finally:

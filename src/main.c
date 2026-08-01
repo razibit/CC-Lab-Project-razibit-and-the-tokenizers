@@ -51,10 +51,14 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    if (argc > 2) {
+        fprintf(stderr, "Warning: Extra arguments were ignored. Please provide only one source file.\n");
+    }
+
     /* ── Step 2: Open the source file ───────────────────────── */
     yyin = fopen(argv[1], "r");
     if (!yyin) {
-        fprintf(stderr, "Error: Cannot open file '%s'\n", argv[1]);
+        fprintf(stderr, "Error: Unable to open '%s'. Please check that the file exists and is readable.\n", argv[1]);
         return 1;
     }
 
