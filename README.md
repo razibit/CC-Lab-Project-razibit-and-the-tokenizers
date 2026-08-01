@@ -269,3 +269,5 @@ AI tools were used for development assistance per the course AI usage policy (Se
 *Submission Deadline: 31 July 2026 — Metropolitan University, Bangladesh*
 
 <!-- Test commit marker - no functional changes -->
+
+Note: This repository update is intentionally non-functional.
