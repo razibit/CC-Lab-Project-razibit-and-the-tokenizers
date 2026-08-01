@@ -25,9 +25,13 @@ import platform
 import subprocess
 import tempfile
 
+MAX_SOURCE_LENGTH = 64 * 1024
+MAX_OUTPUT_LENGTH = 1_000_000
+
 # Create the Flask app.
 # static_folder='gui' tells Flask to serve files from the gui/ directory.
 app = Flask(__name__, static_folder='gui', static_url_path='')
+app.config['MAX_CONTENT_LENGTH'] = MAX_SOURCE_LENGTH
 
 
 @app.route('/')
@@ -43,15 +47,25 @@ def _load_source_code():
     if not isinstance(data, dict) or 'code' not in data or not isinstance(data['code'], str):
         return None, (jsonify({'error': 'No code provided'}), 400)
 
-    return data['code'], None
+    source_code = data['code']
+    if len(source_code.encode('utf-8')) > MAX_SOURCE_LENGTH:
+        return None, (jsonify({'error': 'Source code exceeds the size limit.'}), 413)
+
+    if '\x00' in source_code:
+        return None, (jsonify({'error': 'Null bytes are not allowed.'}), 400)
+
+    return source_code, None
 
 
 def _build_compile_command(filename: str):
     """Build the subprocess command for the current platform."""
+    root_dir = os.path.dirname(os.path.abspath(__file__))
+    compiler_path = os.path.join(root_dir, 'compiler')
+
     # Windows uses the Linux compiler through WSL, while Unix-like systems can run it directly.
     if platform.system() == 'Windows':
-        return ['wsl', './compiler', filename]
-    return ['./compiler', filename]
+        return ['wsl', compiler_path, filename]
+    return [compiler_path, filename]
 
 
 def _collect_error_lines(stdout: str, stderr: str):
@@ -103,8 +117,14 @@ def compile_code():
 
     tmp_path = None
     try:
+        root_dir = os.path.dirname(os.path.abspath(__file__))
         with tempfile.NamedTemporaryFile(
-            dir='.', suffix='.mc', delete=False, mode='w', encoding='utf-8'
+            dir=root_dir,
+            prefix='compile_',
+            suffix='.mc',
+            delete=False,
+            mode='w',
+            encoding='utf-8'
         ) as handle:
             handle.write(source_code)
             tmp_path = handle.name
@@ -116,11 +136,21 @@ def compile_code():
             cmd,
             capture_output=True,
             text=True,
-            timeout=10
+            timeout=10,
+            cwd=root_dir,
+            stdin=subprocess.DEVNULL,
+            check=False
         )
 
         stdout = result.stdout
         stderr = result.stderr
+        total_output = len(stdout.encode('utf-8')) + len(stderr.encode('utf-8'))
+        if total_output > MAX_OUTPUT_LENGTH:
+            return jsonify({
+                'error': 'Compiler output exceeded the size limit.',
+                'success': False
+            })
+
         full_output = stdout + ('\n' + stderr if stderr.strip() else '')
         sections = parse_output_sections(full_output)
         error_lines = _collect_error_lines(stdout, stderr)
@@ -152,6 +182,12 @@ def compile_code():
         })
     finally:
         _cleanup_temp_file(tmp_path)
+
+
+@app.errorhandler(413)
+def request_too_large(_):
+    """Return a clear response when the request body is too large."""
+    return jsonify({'error': 'Request body is too large.', 'success': False}), 413
 
 
 def parse_output_sections(output: str) -> dict:
