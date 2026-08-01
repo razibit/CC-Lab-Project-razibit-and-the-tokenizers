@@ -80,3 +80,5 @@ help:
 	@echo "  Usage: ./compiler <source_file.mc>"
 
 .PHONY: all clean run run-invalid help
+
+# Non-functional note: this comment does not change build behavior.
