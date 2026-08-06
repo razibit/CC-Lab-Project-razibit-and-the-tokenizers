@@ -24,8 +24,6 @@
 /* Token printing flag — set by main.c */
 extern int print_tokens;
 
-/* Cosmetic note: this file remains unchanged in behavior. */
-
 /* Helper: print a token with its line number and value */
 void print_token(const char* type, const char* value) {
     if (print_tokens) {

@@ -101,6 +101,32 @@ ASTNode* make_node(NodeType type, int line) {
     return n;
 }
 
+ASTNode* make_ident_node(const char *name, int line) {
+    /* Identifiers are stored as AST leaves and later resolved by the semantic pass. */
+    ASTNode *n = make_node(NODE_IDENT, line);
+    n->name = strdup(name);
+    return n;
+}
+
+ASTNode* make_binop_node(int line, const char *op, ASTNode *left, ASTNode *right) {
+    /* Shared constructor for binary expressions keeps the grammar actions concise. */
+    ASTNode *n = make_node(NODE_BINOP, line);
+    strncpy(n->op, op, sizeof(n->op) - 1);
+    n->op[sizeof(n->op) - 1] = '\0';
+    n->child[0] = left;
+    n->child[1] = right;
+    return n;
+}
+
+ASTNode* make_unop_node(int line, const char *op, ASTNode *child) {
+    /* Unary expressions follow the same AST shape as binary ones, with a single child. */
+    ASTNode *n = make_node(NODE_UNOP, line);
+    strncpy(n->op, op, sizeof(n->op) - 1);
+    n->op[sizeof(n->op) - 1] = '\0';
+    n->child[0] = child;
+    return n;
+}
+
 /* Convert DataType enum to a readable string */
 const char* type_name(DataType t) {
     switch (t) {
@@ -369,21 +395,34 @@ int   label_count = 0; /* counter for labels: L0, L1, ...         */
 /* Add one line of TAC */
 void emit(const char *line) {
     if (tac_count < MAX_TAC_LINES) {
-        strncpy(tac_code[tac_count++], line, MAX_LINE_LEN - 1);
+        snprintf(tac_code[tac_count], MAX_LINE_LEN, "%s", line);
+        tac_count++;
     }
 }
 
 /* Generate a new unique temp variable name: t1, t2, ... */
+void new_temp_name(char *buf, size_t size) {
+    if (size > 0) {
+        snprintf(buf, size, "t%d", ++temp_count);
+    }
+}
+
 char* new_temp() {
     static char buf[16];
-    snprintf(buf, sizeof(buf), "t%d", ++temp_count);
+    new_temp_name(buf, sizeof(buf));
     return buf;
 }
 
 /* Generate a new unique label name: L0, L1, ... */
+void new_label_name(char *buf, size_t size) {
+    if (size > 0) {
+        snprintf(buf, size, "L%d", label_count++);
+    }
+}
+
 char* new_label() {
     static char buf[16];
-    snprintf(buf, sizeof(buf), "L%d", label_count++);
+    new_label_name(buf, sizeof(buf));
     return buf;
 }
 
@@ -471,9 +510,9 @@ char* gen_code(ASTNode *node) {
     case NODE_PROGRAM:
     case NODE_STMT_LIST:
     case NODE_BLOCK:
-        gen_code(node->child[0]);
-        gen_code(node->child[1]);
-        gen_code(node->child[2]);
+        for (int i = 0; i < 3; i++) {
+            gen_code(node->child[i]);
+        }
         return NULL;
 
     /* ----------------------------------------------------------
@@ -534,19 +573,19 @@ char* gen_code(ASTNode *node) {
          Lend:
        ---------------------------------------------------------- */
     case NODE_IF: {
+        char Lend_buf[16];
         left_var = gen_code(node->child[0]);  /* condition */
-        Lend = strdup(new_label());
+        new_label_name(Lend_buf, sizeof(Lend_buf));
 
-        snprintf(buf, sizeof(buf), "  if_false %s goto %s", left_var, Lend);
+        snprintf(buf, sizeof(buf), "  if_false %s goto %s", left_var, Lend_buf);
         emit(buf);
 
         enter_scope();
         gen_code(node->child[1]);  /* then-body */
         exit_scope();
 
-        snprintf(buf, sizeof(buf), "%s:", Lend);
+        snprintf(buf, sizeof(buf), "%s:", Lend_buf);
         emit(buf);
-        free(Lend);
         return NULL;
     }
 
@@ -562,30 +601,30 @@ char* gen_code(ASTNode *node) {
          Lend:
        ---------------------------------------------------------- */
     case NODE_IF_ELSE: {
+        char Lelse_buf[16];
+        char Lend_buf[16];
         left_var = gen_code(node->child[0]);  /* condition */
-        char *Lelse = strdup(new_label());
-        Lend        = strdup(new_label());
+        new_label_name(Lelse_buf, sizeof(Lelse_buf));
+        new_label_name(Lend_buf, sizeof(Lend_buf));
 
-        snprintf(buf, sizeof(buf), "  if_false %s goto %s", left_var, Lelse);
+        snprintf(buf, sizeof(buf), "  if_false %s goto %s", left_var, Lelse_buf);
         emit(buf);
 
         enter_scope();
         gen_code(node->child[1]);  /* then-body */
         exit_scope();
 
-        snprintf(buf, sizeof(buf), "  goto %s", Lend);
+        snprintf(buf, sizeof(buf), "  goto %s", Lend_buf);
         emit(buf);
-        snprintf(buf, sizeof(buf), "%s:", Lelse);
+        snprintf(buf, sizeof(buf), "%s:", Lelse_buf);
         emit(buf);
 
         enter_scope();
         gen_code(node->child[2]);  /* else-body */
         exit_scope();
 
-        snprintf(buf, sizeof(buf), "%s:", Lend);
+        snprintf(buf, sizeof(buf), "%s:", Lend_buf);
         emit(buf);
-        free(Lelse);
-        free(Lend);
         return NULL;
     }
 
@@ -600,27 +639,27 @@ char* gen_code(ASTNode *node) {
          Lend:
        ---------------------------------------------------------- */
     case NODE_WHILE: {
-        Lstart = strdup(new_label());
-        Lend   = strdup(new_label());
+        char Lstart_buf[16];
+        char Lend_buf[16];
+        new_label_name(Lstart_buf, sizeof(Lstart_buf));
+        new_label_name(Lend_buf, sizeof(Lend_buf));
 
-        snprintf(buf, sizeof(buf), "%s:", Lstart);
+        snprintf(buf, sizeof(buf), "%s:", Lstart_buf);
         emit(buf);
 
         left_var = gen_code(node->child[0]);  /* condition */
 
-        snprintf(buf, sizeof(buf), "  if_false %s goto %s", left_var, Lend);
+        snprintf(buf, sizeof(buf), "  if_false %s goto %s", left_var, Lend_buf);
         emit(buf);
 
         enter_scope();
         gen_code(node->child[1]);  /* loop body */
         exit_scope();
 
-        snprintf(buf, sizeof(buf), "  goto %s", Lstart);
+        snprintf(buf, sizeof(buf), "  goto %s", Lstart_buf);
         emit(buf);
-        snprintf(buf, sizeof(buf), "%s:", Lend);
+        snprintf(buf, sizeof(buf), "%s:", Lend_buf);
         emit(buf);
-        free(Lstart);
-        free(Lend);
         return NULL;
     }
 
@@ -856,8 +895,7 @@ decl
         {
             ASTNode *n = make_node(NODE_DECL, yylineno);
             n->name = $1->name;          /* type name: "int","float","bool" */
-            n->child[0] = make_node(NODE_IDENT, yylineno);
-            n->child[0]->name = $2;      /* variable name */
+            n->child[0] = make_ident_node($2, yylineno);
             $$ = n;
         }
     ;
@@ -866,21 +904,15 @@ decl
 type_spec
     : T_INT
         {
-            ASTNode *n = make_node(NODE_IDENT, yylineno);
-            n->name = strdup("int");
-            $$ = n;
+            $$ = make_ident_node("int", yylineno);
         }
     | T_FLOAT
         {
-            ASTNode *n = make_node(NODE_IDENT, yylineno);
-            n->name = strdup("float");
-            $$ = n;
+            $$ = make_ident_node("float", yylineno);
         }
     | T_BOOL
         {
-            ASTNode *n = make_node(NODE_IDENT, yylineno);
-            n->name = strdup("bool");
-            $$ = n;
+            $$ = make_ident_node("bool", yylineno);
         }
     ;
 
@@ -947,28 +979,26 @@ block
 
 /* Expressions (recursive) — operator precedence handled by %left/%right above */
 expr
-    : expr T_PLUS   expr { ASTNode *n=make_node(NODE_BINOP,yylineno); strcpy(n->op,"+");  n->child[0]=$1; n->child[1]=$3; $$=n; }
-    | expr T_MINUS  expr { ASTNode *n=make_node(NODE_BINOP,yylineno); strcpy(n->op,"-");  n->child[0]=$1; n->child[1]=$3; $$=n; }
-    | expr T_STAR   expr { ASTNode *n=make_node(NODE_BINOP,yylineno); strcpy(n->op,"*");  n->child[0]=$1; n->child[1]=$3; $$=n; }
-    | expr T_SLASH  expr { ASTNode *n=make_node(NODE_BINOP,yylineno); strcpy(n->op,"/");  n->child[0]=$1; n->child[1]=$3; $$=n; }
-    | expr T_PERCENT expr{ ASTNode *n=make_node(NODE_BINOP,yylineno); strcpy(n->op,"%");  n->child[0]=$1; n->child[1]=$3; $$=n; }
-    | expr T_LT     expr { ASTNode *n=make_node(NODE_BINOP,yylineno); strcpy(n->op,"<");  n->child[0]=$1; n->child[1]=$3; $$=n; }
-    | expr T_GT     expr { ASTNode *n=make_node(NODE_BINOP,yylineno); strcpy(n->op,">");  n->child[0]=$1; n->child[1]=$3; $$=n; }
-    | expr T_LE     expr { ASTNode *n=make_node(NODE_BINOP,yylineno); strcpy(n->op,"<="); n->child[0]=$1; n->child[1]=$3; $$=n; }
-    | expr T_GE     expr { ASTNode *n=make_node(NODE_BINOP,yylineno); strcpy(n->op,">="); n->child[0]=$1; n->child[1]=$3; $$=n; }
-    | expr T_EQ     expr { ASTNode *n=make_node(NODE_BINOP,yylineno); strcpy(n->op,"=="); n->child[0]=$1; n->child[1]=$3; $$=n; }
-    | expr T_NEQ    expr { ASTNode *n=make_node(NODE_BINOP,yylineno); strcpy(n->op,"!="); n->child[0]=$1; n->child[1]=$3; $$=n; }
-    | expr T_AND    expr { ASTNode *n=make_node(NODE_BINOP,yylineno); strcpy(n->op,"&&"); n->child[0]=$1; n->child[1]=$3; $$=n; }
-    | expr T_OR     expr { ASTNode *n=make_node(NODE_BINOP,yylineno); strcpy(n->op,"||"); n->child[0]=$1; n->child[1]=$3; $$=n; }
-    | T_NOT expr         { ASTNode *n=make_node(NODE_UNOP, yylineno); strcpy(n->op,"!");  n->child[0]=$2;                 $$=n; }
+    : expr T_PLUS   expr { $$ = make_binop_node(yylineno, "+", $1, $3); }
+    | expr T_MINUS  expr { $$ = make_binop_node(yylineno, "-", $1, $3); }
+    | expr T_STAR   expr { $$ = make_binop_node(yylineno, "*", $1, $3); }
+    | expr T_SLASH  expr { $$ = make_binop_node(yylineno, "/", $1, $3); }
+    | expr T_PERCENT expr{ $$ = make_binop_node(yylineno, "%", $1, $3); }
+    | expr T_LT     expr { $$ = make_binop_node(yylineno, "<", $1, $3); }
+    | expr T_GT     expr { $$ = make_binop_node(yylineno, ">", $1, $3); }
+    | expr T_LE     expr { $$ = make_binop_node(yylineno, "<=", $1, $3); }
+    | expr T_GE     expr { $$ = make_binop_node(yylineno, ">=", $1, $3); }
+    | expr T_EQ     expr { $$ = make_binop_node(yylineno, "==", $1, $3); }
+    | expr T_NEQ    expr { $$ = make_binop_node(yylineno, "!=", $1, $3); }
+    | expr T_AND    expr { $$ = make_binop_node(yylineno, "&&", $1, $3); }
+    | expr T_OR     expr { $$ = make_binop_node(yylineno, "||", $1, $3); }
+    | T_NOT expr         { $$ = make_unop_node(yylineno, "!", $2); }
     | T_MINUS expr %prec UMINUS
-                         { ASTNode *n=make_node(NODE_UNOP, yylineno); strcpy(n->op,"-");  n->child[0]=$2;                 $$=n; }
+                         { $$ = make_unop_node(yylineno, "-", $2); }
     | T_LPAREN expr T_RPAREN { $$ = $2; }
     | T_IDENT
         {
-            ASTNode *n = make_node(NODE_IDENT, yylineno);
-            n->name = $1;
-            $$ = n;
+            $$ = make_ident_node($1, yylineno);
         }
     | T_INT_LIT
         {
@@ -996,6 +1026,7 @@ expr
    ERROR FUNCTION — called by Bison when a syntax error occurs
    ================================================================ */
 void yyerror(const char *msg) {
-    fprintf(stderr, "Syntax Error [Line %d]: %s near '%s'\n",
+    fprintf(stderr,
+            "Syntax Error [Line %d]: %s near '%s'. Please review the surrounding code and try again.\n",
             yylineno, msg, yytext);
 }

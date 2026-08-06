@@ -20,11 +20,14 @@ HOW IT WORKS (explain to teacher):
 """
 
 from flask import Flask, request, jsonify, send_from_directory
+import os
+import platform
+import re
 import subprocess
 import tempfile
-import os
-import re
-import platform
+
+MAX_SOURCE_LENGTH = 64 * 1024
+MAX_OUTPUT_LENGTH = 1_000_000
 
 # =====================================================================
 # FLASK APPLICATION INITIALIZATION
@@ -32,6 +35,7 @@ import platform
 # Create the Flask app.
 # static_folder='gui' tells Flask to serve files from the gui/ directory.
 app = Flask(__name__, static_folder='gui', static_url_path='')
+app.config['MAX_CONTENT_LENGTH'] = MAX_SOURCE_LENGTH
 
 
 def parse_output_sections(output: str) -> dict:
@@ -76,6 +80,58 @@ def index():
     return send_from_directory('gui', 'index.html')
 
 
+def _load_source_code():
+    """Extract and validate the source code from the request payload."""
+    data = request.get_json(silent=True)
+
+    if not isinstance(data, dict) or 'code' not in data or not isinstance(data['code'], str):
+        return None, (jsonify({'error': 'No code provided'}), 400)
+
+    source_code = data['code']
+    if len(source_code.encode('utf-8')) > MAX_SOURCE_LENGTH:
+        return None, (jsonify({'error': 'Source code exceeds the size limit.'}), 413)
+
+    if '\x00' in source_code:
+        return None, (jsonify({'error': 'Null bytes are not allowed.'}), 400)
+
+    return source_code, None
+
+
+def _build_compile_command(filename: str):
+    """Build the subprocess command for the current platform."""
+    root_dir = os.path.dirname(os.path.abspath(__file__))
+    compiler_path = os.path.join(root_dir, 'compiler')
+
+    # Windows uses the Linux compiler through WSL, while Unix-like systems can run it directly.
+    if platform.system() == 'Windows':
+        return ['wsl', compiler_path, filename]
+    return [compiler_path, filename]
+
+
+def _collect_error_lines(stdout: str, stderr: str):
+    """Collect human-readable error lines from compiler output."""
+    error_lines = []
+    seen = set()
+
+    for source in (stderr, stdout):
+        for line in source.splitlines():
+            stripped = line.strip()
+            if not stripped:
+                continue
+            lowered = stripped.lower()
+            if ('error' in lowered or 'warning' in lowered or 'failed' in lowered) and stripped not in seen:
+                error_lines.append(stripped)
+                seen.add(stripped)
+
+    return error_lines
+
+
+def _cleanup_temp_file(tmp_path):
+    """Delete the temporary source file if it still exists."""
+    if tmp_path and os.path.exists(tmp_path):
+        os.unlink(tmp_path)
+
+
 # =====================================================================
 # COMPILATION ENDPOINT
 # =====================================================================
@@ -98,55 +154,52 @@ def compile_code():
             "success":      true / false
         }
     """
-    data = request.get_json()
-    if not data or 'code' not in data:
-        return jsonify({'error': 'No code provided'}), 400
+    source_code, error_response = _load_source_code()
+    if error_response is not None:
+        return error_response
 
-    source_code = data['code']
+    if not source_code.strip():
+        return jsonify({'error': 'The source code is empty. Please enter a program to compile.', 'success': False}), 400
 
-    # Write the source code to a temporary file in the CURRENT directory
-    # This makes it easy for WSL to find without complex path translation
-    with tempfile.NamedTemporaryFile(
-        dir='.', suffix='.mc', delete=False, mode='w', encoding='utf-8'
-    ) as f:
-        f.write(source_code)
-        tmp_path = f.name
-
-    filename = os.path.basename(tmp_path)
-
+    tmp_path = None
     try:
-        # If running on Windows, execute the Linux binary via WSL
-        if platform.system() == "Windows":
-            cmd = ['wsl', './compiler', filename]
-        else:
-            cmd = ['./compiler', filename]
+        root_dir = os.path.dirname(os.path.abspath(__file__))
+        with tempfile.NamedTemporaryFile(
+            dir=root_dir,
+            prefix='compile_',
+            suffix='.mc',
+            delete=False,
+            mode='w',
+            encoding='utf-8'
+        ) as handle:
+            handle.write(source_code)
+            tmp_path = handle.name
 
-        # Run the compiler binary
-        # timeout=10 prevents infinite loops from hanging the server
+        filename = os.path.basename(tmp_path)
+        cmd = _build_compile_command(filename)
+
         result = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
-            timeout=10
+            timeout=10,
+            cwd=root_dir,
+            stdin=subprocess.DEVNULL,
+            check=False
         )
 
         stdout = result.stdout
         stderr = result.stderr
+        total_output = len(stdout.encode('utf-8')) + len(stderr.encode('utf-8'))
+        if total_output > MAX_OUTPUT_LENGTH:
+            return jsonify({
+                'error': 'Compiler output exceeded the size limit.',
+                'success': False
+            })
+
         full_output = stdout + ('\n' + stderr if stderr.strip() else '')
-
-        # Parse the output into sections
-        # Each section is between "=== HEADER ===" markers
         sections = parse_output_sections(full_output)
-
-        # Collect error lines (from stderr + any "Error" lines in stdout)
-        error_lines = []
-        if stderr.strip():
-            error_lines.extend(stderr.strip().splitlines())
-        for line in stdout.splitlines():
-            if 'Error' in line or 'error' in line:
-                if line not in error_lines:
-                    error_lines.append(line)
-
+        error_lines = _collect_error_lines(stdout, stderr)
         success = result.returncode == 0
 
         return jsonify({
@@ -162,7 +215,7 @@ def compile_code():
 
     except subprocess.TimeoutExpired:
         return jsonify({
-            'error': 'Compilation timed out (possible infinite loop in source code)',
+            'error': 'Compilation timed out. The program may be too slow or contain an infinite loop.',
             'success': False
         })
     except FileNotFoundError:
@@ -173,9 +226,61 @@ def compile_code():
             ),
             'success': False
         })
+    except PermissionError:
+        return jsonify({
+            'error': 'The compiler binary could not be executed because it is not permitted to run.',
+            'success': False
+        })
+    except OSError as exc:
+        return jsonify({
+            'error': f'Unable to run the compiler: {exc}',
+            'success': False
+        })
     finally:
-        # Always delete the temporary file
-        os.unlink(tmp_path)
+        _cleanup_temp_file(tmp_path)
+
+
+@app.errorhandler(413)
+def request_too_large(_):
+    """Return a clear response when the request body is too large."""
+    return jsonify({'error': 'Request body is too large.', 'success': False}), 413
+
+
+def parse_output_sections(output: str) -> dict:
+    """
+    Split the compiler's stdout into named sections.
+
+    The compiler outputs sections like:
+        ==================== TOKENS ====================
+        ... content ...
+        ==================== AST ====================
+        ... content ...
+
+    This function splits on those headers and returns a dict.
+    """
+    sections = {}
+    current_section = None
+    current_lines = []
+
+    for line in output.splitlines():
+        stripped = line.strip()
+        # Check if this line is a section header (matches ==...== TITLE ==...==)
+        if stripped.startswith('==') and stripped.endswith('=='):
+            # Save previous section
+            if current_section:
+                sections[current_section] = '\n'.join(current_lines).strip()
+            # Start new section — extract the title from between the =='s
+            title = stripped.strip('=').strip()
+            current_section = title
+            current_lines = []
+        elif current_section:
+            current_lines.append(line)
+
+    # Save last section
+    if current_section:
+        sections[current_section] = '\n'.join(current_lines).strip()
+
+    return sections
 
 
 if __name__ == '__main__':

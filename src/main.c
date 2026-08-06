@@ -23,20 +23,22 @@
    These are defined in parser.y (Bison generates them).
    We declare them here so main.c can call them.
    --------------------------------------------------------------- */
+typedef struct ASTNode ASTNode;
+
 extern int   yyparse(void);         /* entry point of the parser    */
 extern FILE *yyin;                  /* Flex reads tokens from here  */
 extern int   print_tokens;          /* 1 = print tokens to stdout   */
 extern int   semantic_error_count;  /* counts semantic errors found */
 
 /* The root AST node — set by parser.y after parsing completes */
-extern void *ast_root;
+extern ASTNode *ast_root;
 
 /* Functions defined in parser.y that we call after parsing */
-extern void enter_scope(void);
-extern char *gen_code(void *node);
-extern void print_ast(void *node, int depth);
+extern void print_ast(ASTNode *node, int depth);
 extern void print_symbol_table(void);
 extern void print_tac(void);
+extern void enter_scope(void);
+extern char *gen_code(ASTNode *node);
 
 int main(int argc, char *argv[]) {
 
@@ -53,10 +55,14 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    if (argc > 2) {
+        fprintf(stderr, "Warning: Extra arguments were ignored. Please provide only one source file.\n");
+    }
+
     /* ── Step 2: Open the source file ───────────────────────── */
     yyin = fopen(argv[1], "r");
     if (!yyin) {
-        fprintf(stderr, "Error: Cannot open file '%s'\n", argv[1]);
+        fprintf(stderr, "Error: Unable to open '%s'. Please check that the file exists and is readable.\n", argv[1]);
         return 1;
     }
 
@@ -127,6 +133,3 @@ int main(int argc, char *argv[]) {
     return (parse_ok != 0 || semantic_error_count > 0) ? 1 : 0;
 }
 
-/* Non-functional note: this comment does not alter program behavior. */
-
-/* Final non-functional note: this comment does not affect the compiler behavior. */

@@ -1,86 +1,73 @@
-# Mini Programming Language Compiler
+# Mini Compiler for a Custom Programming Language
 
-**Design and Implement a Mini Programming Language Compiler using Flex and Bison**
+A compiler front-end for a small custom language built with Flex, Bison, and C. The project parses source programs, performs basic semantic checks, and produces Three Address Code (TAC) output.
 
-Department of Computer Science and Engineering
-Metropolitan University, Bangladesh
-Compiler Construction Lab — 2026
+This repository also includes a lightweight web-based GUI for compiling and viewing compiler output in the browser.
 
 ---
 
-## Team: Razibit and The Tokenizers
+## Features
 
-| Member | GitHub |
-|--------|--------|
-| Rajib Dab (231-115-103) | [razibit](https://github.com/razibit) |
-| Md Monsur Alam (231-115-104) | [mdmonsuralam](https://github.com/mdmonsuralam) |
-
----
-
-## Project Overview
-
-This project implements a complete compiler **front-end** for a custom mini programming language. The compiler takes source code as input and produces Three Address Code (TAC) as output, passing it through all required phases:
-
-```
-Source Code (.mc)
-      │
-      ▼
-┌─────────────┐
-│   LEXER     │  Flex — tokenizes source code
-│  (lexer.l)  │
-└──────┬──────┘
-       │ Token Stream
-       ▼
-┌─────────────┐
-│   PARSER    │  Bison — validates grammar, builds AST
-│ (parser.y)  │
-└──────┬──────┘
-       │ Abstract Syntax Tree
-       ▼
-┌─────────────┐
-│  SYMBOL     │  Scoped stack — tracks variables & types
-│   TABLE     │
-└──────┬──────┘
-       │ Validated AST
-       ▼
-┌─────────────┐
-│  SEMANTIC   │  Type checking, scope validation
-│  ANALYZER   │
-└──────┬──────┘
-       │ Annotated AST
-       ▼
-┌─────────────┐
-│  TAC GEN.   │  Three Address Code generation
-└──────┬──────┘
-       │
-       ▼
-Three Address Code Output
-```
+- Lexical analysis with Flex
+- Parsing and AST construction with Bison
+- Symbol table management with lexical scope support
+- Semantic checks for declarations, redeclarations, and type issues
+- Three Address Code generation
+- Browser-based GUI for compilation and result viewing
+- Sample valid and invalid programs for demonstration and testing
 
 ---
 
-## Quick Start
+## Technologies Used
 
-### Requirements
+- C
+- Flex
+- Bison
+- Python + Flask (for the web server)
+- HTML/CSS (for the GUI)
+- Make
 
-- WSL (Windows Subsystem for Linux) with Ubuntu, OR Linux
-- Flex, Bison, GCC, Make installed
+---
+
+## Installation
+
+### Prerequisites
+
+On Ubuntu or WSL:
 
 ```bash
 sudo apt update
 sudo apt install build-essential flex bison
 ```
 
-### Build
+For the web GUI, install Flask:
+
+```bash
+pip install flask
+```
+
+### Clone the Repository
+
+```bash
+git clone <repository-url>
+cd CC-Lab-Project-razibit-and-the-tokenizers
+```
+
+### Build the Compiler
 
 ```bash
 make
 ```
 
-This runs 3 steps automatically:
-1. `flex lexer.l` → generates `lex.yy.c`
-2. `bison -d parser.y` → generates `parser.tab.c` + `parser.tab.h`
-3. `gcc` links everything into `./compiler`
+This will generate the compiler binary at:
+
+```bash
+./compiler
+```
+
+---
+
+## Usage
 
 ### Run the Compiler
 
@@ -88,176 +75,106 @@ This runs 3 steps automatically:
 ./compiler examples/valid/sample.mc
 ```
 
-### Run the Web GUI (Bonus Feature)
+The compiler prints:
+- Tokens
+- Abstract Syntax Tree
+- Symbol Table
+- Three Address Code
+- Compilation Summary
+
+### Run the Web GUI
 
 ```bash
-# Install Flask (one-time)
-pip install flask
-
-# Start the web server
 python server.py
 ```
 
-Then open your browser at: **http://localhost:5000**
+Then open:
+
+```text
+http://localhost:5000
+```
+
+---
+
+## Example Programs
+
+### Valid Example
+
+```c
+int x;
+int y;
+
+x = 10;
+y = x + 5;
+
+print y;
+```
+
+### Invalid Example
+
+```c
+int x;
+
+x = true;
+```
+
+---
+
+## Screenshots
+
+The GUI includes a terminal-inspired interface with:
+- a code editor panel
+- tabbed output panels for tokens, AST, symbol table, and TAC
+- a pipeline visualization for the compiler stages
+
+![GUI Preview](gui/index.html)
+
+> Replace this placeholder with an actual screenshot image file if you want to include a real image in the repository.
 
 ---
 
 ## Project Structure
 
-```
-project-root/
+```text
+.
+├── examples/
+│   ├── invalid/
+│   └── valid/
+├── gui/
+│   ├── index.html
+│   └── style.css
 ├── src/
 │   ├── lexer/
-│   │   └── lexer.l          ← Flex lexer (tokenizes source)
+│   │   └── lexer.l
 │   ├── parser/
-│   │   └── parser.y         ← Bison parser (grammar + AST + semantic + TAC)
-│   └── main.c               ← Entry point
-├── gui/
-│   ├── index.html           ← Web GUI (terminal-style, dark green)
-│   └── style.css            ← Terminal aesthetic stylesheet
-├── server.py                ← Flask bridge (~30 lines)
-├── docs/
-│   └── project_report.md    ← Project report
+│   │   └── parser.y
+│   └── main.c
 ├── tests/
-│   ├── valid/               ← Programs that should compile cleanly
-│   └── invalid/             ← Programs that should produce errors
-├── examples/
-│   ├── valid/sample.mc      ← Demo program (valid)
-│   └── invalid/sample.mc    ← Demo program (with errors)
+│   ├── invalid/
+│   └── valid/
 ├── Makefile
-└── README.md
+├── README.md
+├── server.py
+└── LICENSE
 ```
 
 ---
 
-## What the Compiler Outputs
+## Testing
 
-Running `./compiler source.mc` prints **5 labeled sections**:
-
-```
-==================== TOKENS ====================
-  [Line   1]  KEYWORD               int
-  [Line   1]  IDENTIFIER            x
-  ...
-
-==================== ABSTRACT SYNTAX TREE ====================
-Program
-  Declare [int x] at line 1
-  While at line 4
-    Condition:
-      BinaryOp [>]
-        Identifier [x]
-        IntLiteral [0]
-    Body:
-      ...
-
-==================== SYMBOL TABLE ====================
-  Scope 0:
-    x            | int    | declared at line 1
-    y            | int    | declared at line 2
-
-==================== THREE ADDRESS CODE ====================
-  ; declare int x
-  x = 10
-  y = 0
-L0:
-  t1 = x > 0
-  if_false t1 goto L1
-  ...
-
-==================== COMPILATION SUMMARY ====================
-  Result: SUCCESS — No errors found.
-```
-
----
-
-## Language Specification
-
-### Data Types
-| Type | Description |
-|------|-------------|
-| `int` | Signed integer |
-| `float` | Floating-point number |
-| `bool` | Boolean (`true`/`false`) |
-
-### Operators
-| Category | Operators |
-|----------|-----------|
-| Arithmetic | `+  -  *  /  %` |
-| Relational | `<  >  <=  >=  ==  !=` |
-| Logical | `&&  \|\|  !` |
-
-### Sample Program
-
-```
-int x;
-int y;
-bool flag;
-
-x = 10;
-y = 0;
-flag = true;
-
-while (x > 0) {
-    y = y + x;
-    x = x - 1;
-}
-
-if (flag == true) {
-    print y;
-} else {
-    print x;
-}
-```
-
----
-
-## Test Cases
-
-| Test File | Category | What It Demonstrates |
-|-----------|----------|----------------------|
-| `tests/valid/test_arithmetic.mc` | Valid | Arithmetic & operator precedence |
-| `tests/valid/test_while.mc` | Valid | While loop, scope |
-| `tests/valid/test_if_else.mc` | Valid | If-else, booleans |
-| `tests/valid/test_nested_scopes.mc` | Valid | Nested scope visibility |
-| `tests/invalid/test_lexical_error.mc` | Invalid | Lexical errors (`@`, `#`) |
-| `tests/invalid/test_syntax_error.mc` | Invalid | Syntax errors (missing `;`, `)`) |
-| `tests/invalid/test_undeclared.mc` | Invalid | Undeclared variable errors |
-| `tests/invalid/test_redeclaration.mc` | Invalid | Redeclaration errors |
-| `tests/invalid/test_type_mismatch.mc` | Invalid | Type mismatch errors |
-
-Run all tests:
+You can try the provided sample programs:
 
 ```bash
-for f in tests/valid/*.mc;   do echo "--- $f ---"; ./compiler "$f"; done
-for f in tests/invalid/*.mc; do echo "--- $f ---"; ./compiler "$f"; done
+./compiler examples/valid/sample.mc
+./compiler examples/invalid/sample.mc
 ```
 
 ---
 
-## Web GUI (Extra Feature)
+## Notes
 
-The project includes a browser-based GUI with a **Matrix terminal aesthetic** (dark green on black).
+This project is intended for educational and lab purposes and demonstrates the core stages of a compiler front-end.
 
-Features:
-- **Left panel**: Code editor with line numbers, tab support, sample program pre-loaded
-- **Right panel**: Tabbed output — Tokens | AST | Symbol Table | TAC | Errors
-- **Pipeline diagram**: Animates each compiler stage as it processes
-- **Syntax highlighting**: Different colors for keywords, labels, errors, etc.
-- **Ctrl+Enter** shortcut to compile
-
----
-
-## AI Usage
-
-AI tools were used for development assistance per the course AI usage policy (Section 10). Every team member understands every line of submitted code and can explain it during the viva.
-
----
-
-## Build/Run Troubleshooting
-
-| Problem | Fix |
-|---------|-----|
 | `flex: command not found` | `sudo apt install flex` |
 | `bison: command not found` | `sudo apt install bison` |
 | `gcc: command not found` | `sudo apt install build-essential` |
