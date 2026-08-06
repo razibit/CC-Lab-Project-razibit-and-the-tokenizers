@@ -22,16 +22,56 @@ HOW IT WORKS (explain to teacher):
 from flask import Flask, request, jsonify, send_from_directory
 import os
 import platform
+import re
 import subprocess
 import tempfile
 
 MAX_SOURCE_LENGTH = 64 * 1024
 MAX_OUTPUT_LENGTH = 1_000_000
 
+# =====================================================================
+# FLASK APPLICATION INITIALIZATION
+# =====================================================================
 # Create the Flask app.
 # static_folder='gui' tells Flask to serve files from the gui/ directory.
 app = Flask(__name__, static_folder='gui', static_url_path='')
 app.config['MAX_CONTENT_LENGTH'] = MAX_SOURCE_LENGTH
+
+
+def parse_output_sections(output: str) -> dict:
+    """
+    Split the compiler's stdout into named sections.
+
+    The compiler outputs sections like:
+        ==================== TOKENS ====================
+        ... content ...
+        ==================== AST ====================
+        ... content ...
+
+    This function splits on those headers and returns a dict.
+    """
+    sections = {}
+    current_section = None
+    current_lines = []
+
+    for line in output.splitlines():
+        # Check if this line is a section header (matches ==...== TITLE ==...==)
+        if line.startswith('==') and line.strip().endswith('=='):
+            # Save previous section
+            if current_section:
+                sections[current_section] = '\n'.join(current_lines).strip()
+            # Start new section — extract title from between the =='s
+            title = re.sub(r'=+', '', line).strip()
+            current_section = title
+            current_lines = []
+        elif current_section:
+            current_lines.append(line)
+
+    # Save last section
+    if current_section:
+        sections[current_section] = '\n'.join(current_lines).strip()
+
+    return sections
 
 
 @app.route('/')
@@ -92,6 +132,9 @@ def _cleanup_temp_file(tmp_path):
         os.unlink(tmp_path)
 
 
+# =====================================================================
+# COMPILATION ENDPOINT
+# =====================================================================
 @app.route('/compile', methods=['POST'])
 def compile_code():
     """

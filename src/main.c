@@ -42,6 +42,10 @@ extern char *gen_code(ASTNode *node);
 
 int main(int argc, char *argv[]) {
 
+    /* ========================================================= */
+    /*                 INITIALIZATION PHASE                      */
+    /* ========================================================= */
+
     /* ── Step 1: Require a source file argument ─────────────── */
     if (argc < 2) {
         fprintf(stderr,
@@ -120,6 +124,10 @@ int main(int argc, char *argv[]) {
         printf("  Output:  Three Address Code generated successfully.\n");
     }
     printf("============================================================\n\n");
+
+    /* ========================================================= */
+    /*                 TERMINATION PHASE                         */
+    /* ========================================================= */
 
     /* Return 0 = success, 1 = errors */
     return (parse_ok != 0 || semantic_error_count > 0) ? 1 : 0;

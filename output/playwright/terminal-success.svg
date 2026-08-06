@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="900" viewBox="0 0 1500 900">
+<rect width="1500" height="900" fill="#101418"/>
+<text x="35" y="48" fill="#7BC47F" font-family="Consolas,monospace" font-size="26">razibit@tokenizers:~/project$ ./compiler examples/valid/sample.mc</text>
+<text x="35" y="95" fill="#F5F5F5" font-family="Consolas,monospace" font-size="23">Mini Compiler — Razibit and The Tokenizers</text>
+<text x="35" y="145" fill="#63C5DA" font-family="Consolas,monospace" font-size="23">==================== TOKENS ====================</text>
+<text x="35" y="190" fill="#F5F5F5" font-family="Consolas,monospace" font-size="21">[Line  7] KEYWORD int   [Line  7] IDENTIFIER x</text>
+<text x="35" y="230" fill="#F5F5F5" font-family="Consolas,monospace" font-size="21">[Line 13] IDENTIFIER x   ASSIGN =   INT_LIT 10</text>
+<text x="35" y="280" fill="#B39DDB" font-family="Consolas,monospace" font-size="23">==================== ABSTRACT SYNTAX TREE ====================</text>
+<text x="35" y="325" fill="#F5F5F5" font-family="Consolas,monospace" font-size="21">Program</text>
+<text x="35" y="360" fill="#F5F5F5" font-family="Consolas,monospace" font-size="21">  Declare [int x]   Assign [x =]</text>
+<text x="35" y="400" fill="#F5F5F5" font-family="Consolas,monospace" font-size="21">  While → Condition: BinaryOp [&gt;]</text>
+<text x="35" y="450" fill="#7BC47F" font-family="Consolas,monospace" font-size="23">==================== SYMBOL TABLE ====================</text>
+<text x="35" y="495" fill="#F5F5F5" font-family="Consolas,monospace" font-size="21">Scope 0: x int, y int, flag bool, rate float</text>
+<text x="35" y="545" fill="#F08A5D" font-family="Consolas,monospace" font-size="23">==================== THREE ADDRESS CODE ====================</text>
+<text x="35" y="590" fill="#F5F5F5" font-family="Consolas,monospace" font-size="21">t1 = x &gt; 0   if_false t1 goto L1   t2 = y + x</text>
+<text x="35" y="630" fill="#F5F5F5" font-family="Consolas,monospace" font-size="21">y = t2   t3 = x - 1   x = t3   goto L0   L1:</text>
+<text x="35" y="700" fill="#F6C85F" font-family="Consolas,monospace" font-size="23">==================== COMPILATION SUMMARY ====================</text>
+<text x="35" y="750" fill="#7BC47F" font-family="Consolas,monospace" font-size="24">Result: SUCCESS — Three Address Code generated successfully.</text>
+</svg>
