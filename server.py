@@ -1,10 +1,8 @@
 """
 server.py  —  Flask Web Server (GUI Bonus Feature)
-Course:  Compiler Construction Lab
-Team:    Razibit and The Tokenizers
 University: Metropolitan University, Bangladesh
 
-HOW IT WORKS (explain to teacher):
+HOW IT WORKS:
   This is a tiny Python web server (about 20 lines of real logic).
   When the user clicks "Compile" in the browser:
     1) The browser sends the source code as a POST request to /compile

@@ -1,7 +1,5 @@
 # =============================================================
 # Makefile  —  Build System for the Mini Compiler
-# Course:  Compiler Construction Lab
-# Team:    Razibit and The Tokenizers
 #
 # HOW IT WORKS (explain to teacher):
 #   "make" runs all build steps automatically.

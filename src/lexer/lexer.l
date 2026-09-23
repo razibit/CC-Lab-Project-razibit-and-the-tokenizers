@@ -1,10 +1,7 @@
 /* =============================================================
    lexer.l  —  Lexical Analyzer for the Mini Compiler
-   Course:  Compiler Construction Lab
-   Team:    Razibit and The Tokenizers
-   University: Metropolitan University, Bangladesh
 
-   HOW IT WORKS (explain to teacher):
+   HOW IT WORKS:
      Flex reads this file and generates a C function called yylex().
      Each rule is a PATTERN → ACTION pair.
      The longest matching pattern wins (Flex rule).

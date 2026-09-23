@@ -1,8 +1,5 @@
 /* =============================================================
    main.c  —  Compiler Entry Point
-   Course:  Compiler Construction Lab
-   Team:    Razibit and The Tokenizers
-   University: Metropolitan University, Bangladesh
 
    HOW IT WORKS (explain to teacher):
      main.c is the entry point. It:

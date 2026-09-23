@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="760" viewBox="0 0 1500 760">
+<rect width="1500" height="760" fill="#101418"/>
+<text x="35" y="48" fill="#7BC47F" font-family="Consolas,monospace" font-size="26">razibit@tokenizers:~/project$ ./compiler tests/invalid/test_type_mismatch.mc</text>
+<text x="35" y="110" fill="#EF6F6C" font-family="Consolas,monospace" font-size="22">Semantic Error [Line 10]: cannot assign float to int variable 'x'.</text>
+<text x="35" y="155" fill="#EF6F6C" font-family="Consolas,monospace" font-size="22">Semantic Error [Line 13]: cannot assign int to bool variable 'flag'.</text>
+<text x="35" y="200" fill="#EF6F6C" font-family="Consolas,monospace" font-size="22">Semantic Error [Line 16]: cannot assign bool to float variable 'rate'.</text>
+<text x="35" y="270" fill="#F08A5D" font-family="Consolas,monospace" font-size="23">==================== THREE ADDRESS CODE ====================</text>
+<text x="35" y="320" fill="#F5F5F5" font-family="Consolas,monospace" font-size="21">x = 3.1400   t1 = 3 + 3   flag = t1   rate = true</text>
+<text x="35" y="400" fill="#F6C85F" font-family="Consolas,monospace" font-size="23">==================== COMPILATION SUMMARY ====================</text>
+<text x="35" y="455" fill="#EF6F6C" font-family="Consolas,monospace" font-size="24">Result: FAILED</text>
+<text x="35" y="500" fill="#EF6F6C" font-family="Consolas,monospace" font-size="24">Reason: 3 semantic error(s) detected.</text>
+</svg>

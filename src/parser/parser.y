@@ -499,7 +499,7 @@ char* gen_code(ASTNode *node) {
 
     char buf[MAX_LINE_LEN];
     char *left_var, *right_var;
-    char *t, *Lstart, *Lend;
+    char *t;
     SymbolEntry *entry;
 
     switch (node->type) {
