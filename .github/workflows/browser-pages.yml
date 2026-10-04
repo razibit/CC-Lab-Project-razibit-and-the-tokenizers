@@ -1,0 +1,54 @@
+name: Browser compiler demo on GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'gui/**'
+      - 'browser/**'
+      - 'tools/build_browser.py'
+      - '.github/workflows/browser-pages.yml'
+      - 'LICENSE'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: browser-github-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install lexer and parser generators
+        run: sudo apt-get update && sudo apt-get install -y flex bison
+      - name: Install pinned Emscripten SDK
+        run: |
+          curl -fsSL https://github.com/emscripten-core/emsdk/archive/refs/tags/4.0.23.tar.gz | tar xz
+          ./emsdk-4.0.23/emsdk install 4.0.23
+          ./emsdk-4.0.23/emsdk activate 4.0.23
+      - name: Build browser representation only
+        run: |
+          source ./emsdk-4.0.23/emsdk_env.sh
+          python3 tools/build_browser.py
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: build/browser
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy browser demo
+        id: deployment
+        uses: actions/deploy-pages@v4
