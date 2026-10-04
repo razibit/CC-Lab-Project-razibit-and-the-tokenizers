@@ -60,3 +60,8 @@ cmake-build-*/
 # ==================================================
 .DS_Store
 Thumbs.db
+
+# Local browser build and browser validation artifacts
+build/
+.playwright-cli/
+__pycache__/

@@ -289,9 +289,13 @@ if (flag == true) {
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const target = btn.dataset.tab;
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.remove('active');
+        b.setAttribute('aria-selected', 'false');
+      });
       document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
       btn.classList.add('active');
+      btn.setAttribute('aria-selected', 'true');
       document.getElementById('pane-' + target).classList.add('active');
     });
   });
@@ -390,9 +394,9 @@ if (flag == true) {
 
     if (type === 'errors') {
       result = result.split('\n').map(line => {
-        if (/Semantic Error/i.test(line)) return '<span class="err-semantic">' + escapeHtml(line) + '</span>';
-        if (/Syntax Error/i.test(line))   return '<span class="err-syntax">' + escapeHtml(line) + '</span>';
-        if (/Lexical Error/i.test(line))  return '<span class="err-lexical">' + escapeHtml(line) + '</span>';
+        if (/Semantic Error/i.test(line)) return '<span class="err-semantic">' + line + '</span>';
+        if (/Syntax Error/i.test(line))   return '<span class="err-syntax">' + line + '</span>';
+        if (/Lexical Error/i.test(line))  return '<span class="err-lexical">' + line + '</span>';
         return line;
       }).join('\n');
       /* Note: errors are already escaped in the split/map above */
@@ -404,8 +408,9 @@ if (flag == true) {
 
   /* ── MAIN COMPILE FUNCTION ───────────────────────────────────── */
   async function compileCode() {
-    const code = editor.value.trim();
-    if (!code) {
+    if (btnCompile.disabled) return;
+    const code = editor.value;
+    if (!code.trim()) {
       setStatus('warning', 'NO CODE');
       summaryText.textContent = 'Please enter some code first.';
       return;
@@ -420,22 +425,26 @@ if (flag == true) {
     summaryText.className = '';
 
     /* Animate the pipeline diagram */
-    animatePipeline();
+    const pipelineAnimation = animatePipeline();
+    const browserMode = document.documentElement.dataset.compilerMode === 'browser';
 
     try {
-      const response = await fetch('/compile', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ code })
-      });
-
-      const data = await response.json();
+      const compilation = browserMode
+        ? (window.MiniCompilerBrowser
+            ? window.MiniCompilerBrowser.compile(code)
+            : Promise.resolve({ error: 'The browser compiler did not load. Reload the page and try again.' }))
+        : fetch('/compile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code })
+          }).then(response => response.json());
+      const [data] = await Promise.all([compilation, pipelineAnimation]);
 
       if (data.error) {
         /* Server-side error (binary not found, timeout, etc.) */
         setStatus('error', 'ERROR');
         outputs.errors.innerHTML = '<span class="err-server">' + escapeHtml(data.error) + '</span>';
-        summaryText.textContent  = 'Server error: ' + data.error;
+        summaryText.textContent  = 'Compilation error: ' + data.error;
         summaryText.className    = 'status-fail';
         completePipeline(false);
         /* Switch to errors tab */
@@ -475,11 +484,15 @@ if (flag == true) {
       }
 
     } catch (err) {
-      setStatus('error', 'NETWORK ERROR');
-      outputs.errors.innerHTML = '<span class="err-server">Network error: Could not reach the server.\nMake sure server.py is running:\n  python server.py</span>';
-      summaryText.textContent  = 'Could not connect to compiler server.';
+      await pipelineAnimation;
+      setStatus('error', browserMode ? 'ERROR' : 'NETWORK ERROR');
+      outputs.errors.textContent = browserMode
+        ? 'The browser compiler could not run. Reload the page and try again.'
+        : 'Network error: Could not reach the server.\nMake sure server.py is running:\n  python server.py';
+      summaryText.textContent = browserMode ? 'Browser compilation failed.' : 'Could not connect to compiler server.';
       summaryText.className    = 'status-fail';
       completePipeline(false);
+      document.querySelector('[data-tab="errors"]').click();
     } finally {
       compileIcon.textContent  = '$';
       compileLabel.textContent = 'COMPILE';
@@ -491,6 +504,9 @@ if (flag == true) {
   /* Load the sample program on first load */
   editor.value = SAMPLE_CODE;
   updateLineNumbers();
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.setAttribute('aria-selected', String(btn.classList.contains('active')));
+  });
   setStatus('', 'READY');
 
   </script>
